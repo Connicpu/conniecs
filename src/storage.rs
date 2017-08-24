@@ -12,6 +12,7 @@ impl<T> ComponentStorage for VecStorage<T> {
     type Component = T;
 
     #[doc(hidden)]
+    #[inline]
     fn __new() -> Self {
         VecStorage {
             storage: VecMap::new(),
@@ -19,26 +20,31 @@ impl<T> ComponentStorage for VecStorage<T> {
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __insert(&mut self, index: usize, component: Self::Component) {
         self.storage.insert(index, component);
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __remove(&mut self, index: usize) {
         self.storage.remove(index);
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __contains(&self, index: usize) -> bool {
         self.storage.contains_key(index)
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __get(&self, index: usize) -> Option<&Self::Component> {
         self.storage.get(index)
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __get_mut(&mut self, index: usize) -> Option<&mut Self::Component> {
         self.storage.get_mut(index)
     }
@@ -52,6 +58,7 @@ impl<T> ComponentStorage for HashStorage<T> {
     type Component = T;
 
     #[doc(hidden)]
+    #[inline]
     fn __new() -> Self {
         HashStorage {
             storage: HashMap::new(),
@@ -59,11 +66,13 @@ impl<T> ComponentStorage for HashStorage<T> {
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __insert(&mut self, index: usize, component: Self::Component) {
         self.storage.insert(index, component);
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __remove(&mut self, index: usize) {
         self.storage.remove(&index);
     }
@@ -74,11 +83,13 @@ impl<T> ComponentStorage for HashStorage<T> {
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __get(&self, index: usize) -> Option<&Self::Component> {
         self.storage.get(&index)
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __get_mut(&mut self, index: usize) -> Option<&mut Self::Component> {
         self.storage.get_mut(&index)
     }
@@ -92,6 +103,7 @@ impl ComponentStorage for MarkerStorage {
     type Component = ();
 
     #[doc(hidden)]
+    #[inline]
     fn __new() -> Self {
         MarkerStorage {
             storage: HashMap::new(),
@@ -99,26 +111,31 @@ impl ComponentStorage for MarkerStorage {
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __insert(&mut self, index: usize, component: Self::Component) {
         self.storage.insert(index, component);
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __remove(&mut self, index: usize) {
         self.storage.remove(&index);
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __contains(&self, index: usize) -> bool {
         self.storage.contains_key(&index)
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __get(&self, index: usize) -> Option<&Self::Component> {
         self.storage.get(&index)
     }
 
     #[doc(hidden)]
+    #[inline]
     fn __get_mut(&mut self, index: usize) -> Option<&mut Self::Component> {
         self.storage.get_mut(&index)
     }
