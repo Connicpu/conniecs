@@ -1,0 +1,12 @@
+[package]
+authors = ["Connie Hilarides <conni_h@outlook.com>"]
+name = "conniecs"
+version = "0.1.0"
+
+[dependencies]
+vec_map = "0.8.0"
+
+[dev-dependencies]
+
+[dev-dependencies.conniecs-derive]
+path = "conniecs-derive"
