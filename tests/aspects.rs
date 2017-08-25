@@ -58,10 +58,10 @@ fn panicker_update(_: &mut Panicker, _: &mut DataHelper) {
 #[test]
 pub fn simulate() {
     let mut world = conniecs::World::<Systems>::new();
-    world
-        .data
-        .create_entity(|e: BuildData<_>, c: &mut Components, _: &mut Services| {
+    world.data.create_entity(
+        |e: BuildData<_>, c: &mut Components, _: &mut Services| {
             c.foo.add(e, "asdf".to_string());
-        });
+        },
+    );
     world.update();
 }
