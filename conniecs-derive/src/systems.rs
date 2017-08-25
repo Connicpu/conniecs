@@ -1,4 +1,4 @@
-use syn::{self, Body, VariantData, Attribute};
+use syn::{self, Attribute, Body, VariantData};
 use quote;
 
 use system::read_data;
@@ -46,12 +46,16 @@ pub fn impl_systems(ast: syn::DeriveInput) -> quote::Tokens {
     let empty = vec![];
     let fields = fields.as_ref().unwrap_or(&empty);
 
-    let active_systems = fields.iter()
+    let active_systems = fields
+        .iter()
         .filter(|field| !is_passive(&field.attrs))
         .map(|field| field.ident.as_ref().unwrap())
         .collect::<Vec<_>>();
 
-    let fields = fields.iter().map(|field| field.ident.as_ref().unwrap()).collect::<Vec<_>>();
+    let fields = fields
+        .iter()
+        .map(|field| field.ident.as_ref().unwrap())
+        .collect::<Vec<_>>();
     let fields = &fields;
 
     let (components, services) = match cs_data {
