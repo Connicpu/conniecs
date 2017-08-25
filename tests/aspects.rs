@@ -4,8 +4,10 @@ extern crate conniecs;
 
 use conniecs::ComponentList;
 use conniecs::BuildData;
+use conniecs::system::EntitySystem;
 
 type CList<T> = ComponentList<Components, T>;
+type EntityIter<'a> = conniecs::EntityIter<'a, Components>;
 type DataHelper = conniecs::DataHelper<Components, Services>;
 
 #[derive(Aspect)]
@@ -30,6 +32,7 @@ pub struct Components {
 #[derive(SystemManager)]
 pub struct Systems {
     update: Update,
+    esystem: EntitySystem<ESystem>,
 
     #[passive]
     panicker: Panicker,
@@ -55,13 +58,31 @@ fn panicker_update(_: &mut Panicker, _: &mut DataHelper) {
     panic!("this shouldn't get called");
 }
 
+#[derive(Default, System)]
+#[system_type(Entity)]
+#[process(eprocess)]
+#[aspect(all(foo))]
+pub struct ESystem;
+
+fn eprocess(_: &mut ESystem, entities: EntityIter, data: &mut DataHelper) {
+    for entity in entities {
+        assert_eq!(&data.components.foo[entity], "asdf");
+        data.components.foo[entity].push_str("ghjkl");
+    }
+}
+
 #[test]
 pub fn simulate() {
     let mut world = conniecs::World::<Systems>::new();
-    world.data.create_entity(
-        |e: BuildData<_>, c: &mut Components, _: &mut Services| {
-            c.foo.add(e, "asdf".to_string());
-        },
-    );
+    
+    let asdf = world.data.create_entity(|e, c, _| {
+        // We need a foo!
+        c.foo.add(e, "asdf".to_string());
+    });
+
     world.update();
+
+    world.data.with_entity_data(asdf, |e, c, _| {
+        assert_eq!(&c.foo[e], "asdfghjkl");
+    });
 }

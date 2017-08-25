@@ -1,6 +1,6 @@
 use component::ComponentManager;
-use entity::{Entity, EntityBuilder, EntityData, EntityIter, EntityManager, EntityModifier,
-             ModifyData};
+use entity::{BuildData, Entity, EntityBuilder, EntityData, EntityIter, EntityManager,
+             EntityModifier, ModifyData};
 use services::ServiceManager;
 use system::SystemManager;
 
@@ -42,7 +42,14 @@ where
         }
     }
 
-    pub fn create_entity<B>(&mut self, builder: B) -> Entity
+    pub fn create_entity<F>(&mut self, builder: F) -> Entity
+    where
+        F: FnOnce(BuildData<C>, &mut C, &mut M),
+    {
+        self.create_entity_with_builder(builder)
+    }
+
+    pub fn create_entity_with_builder<B>(&mut self, builder: B) -> Entity
     where
         B: EntityBuilder<C, M>,
     {
@@ -85,7 +92,14 @@ where
         self.data.entities.iter()
     }
 
-    pub fn modify_entity<M>(&mut self, entity: Entity, modifier: M)
+    pub fn modify_entity<F>(&mut self, entity: Entity, modifier: F)
+    where
+        F: FnOnce(ModifyData<S::Components>, &mut S::Components, &mut S::Services),
+    {
+        self.modify_entity_with_modifer(entity, modifier)
+    }
+
+    pub fn modify_entity_with_modifer<M>(&mut self, entity: Entity, modifier: M)
     where
         M: EntityModifier<S::Components, S::Services>,
     {

@@ -178,11 +178,11 @@ fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
 fn read_systy(attr: &MetaItem) -> SystemType {
     let systy = read_path_item(attr, || improper_systy_fmt());
     match &systy[..] {
-        "basic" => SystemType::Basic,
-        "entity" => SystemType::Entity,
-        "lazy" => SystemType::Lazy,
-        "interval" => SystemType::Interval,
-        "interact" => SystemType::Interact,
+        "Basic"    | "basic"    => SystemType::Basic,
+        "Entity"   | "entity"   => SystemType::Entity,
+        "Lazy"     | "lazy"     => SystemType::Lazy,
+        "Interval" | "interval" => SystemType::Interval,
+        "Interact" | "interact" => SystemType::Interact,
         _ => improper_systy_fmt(),
     }
 }
