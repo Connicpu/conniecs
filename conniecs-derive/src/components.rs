@@ -1,4 +1,4 @@
-use syn::{self, Body, VariantData};
+use syn::{self, Body, Field, Ident, MetaItem, VariantData};
 use quote;
 
 pub fn impl_components(ast: syn::DeriveInput) -> quote::Tokens {
@@ -8,8 +8,8 @@ pub fn impl_components(ast: syn::DeriveInput) -> quote::Tokens {
 
     let name = ast.ident;
     let fields = match ast.body {
-        Body::Struct(VariantData::Struct(fields)) => fields,
-        Body::Struct(VariantData::Unit) => vec![],
+        Body::Struct(VariantData::Struct(fields)) => Some(fields),
+        Body::Struct(VariantData::Unit) => None,
         Body::Struct(VariantData::Tuple(_)) => {
             panic!("Components may not be represented by a tuple struct.")
         }
@@ -18,21 +18,45 @@ pub fn impl_components(ast: syn::DeriveInput) -> quote::Tokens {
         }
     };
 
-    let field_inits = fields
-        .iter()
-        .map(|field| field.ident.as_ref().unwrap())
-        .map(|ident| {
-            quote! { #ident : ::conniecs::traits::ComponentStorage::__new() }
-        })
-        .collect::<Vec<_>>();
+    let init = if let Some(fields) = fields {
+        let field_inits = fields.iter().map(|field| field_info(field)).map(
+            |(ident, kind)| {
+                quote! { #ident: ::conniecs::component::ComponentList::#kind() }
+            },
+        );
 
-    quote! {
-        impl ::conniecs::traits::Components for #name {
-            fn new() -> Self {
-                #name {
-                    #(#field_inits),*
-                }
+        quote! {
+            #name {
+                #(#field_inits),*
             }
         }
+    } else {
+        quote! { #name }
+    };
+
+    quote! {
+        impl ::conniecs::component::ComponentManager for #name {
+            fn build_manager() -> Self {
+                #init
+            }
+
+            #[doc(hidden)]
+            fn __please_use_the_derive_attribute() {}
+        }
+    }
+}
+
+fn field_info(field: &Field) -> (&Ident, &Ident) {
+    let kind_attr = field
+        .attrs
+        .iter()
+        .filter(|a| !a.is_sugared_doc)
+        .map(|a| &a.value)
+        .filter(|m| m.name() == "hot" || m.name() == "cold")
+        .nth(0);
+
+    match kind_attr {
+        Some(&MetaItem::Word(ref kind)) => (field.ident.as_ref().unwrap(), kind),
+        _ => panic!("All component lists must be marked with either #[hot] or #[cold]"),
     }
 }
