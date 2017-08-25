@@ -1,6 +1,7 @@
-use syn::{self, MetaItem, NestedMetaItem, Lit};
+use syn::{self, MetaItem, NestedMetaItem, Lit, Ident};
 use quote;
 use {read_path_item, improper_attr_format, quote_path};
+use aspect::{read_aspect_meta, quote_aspect};
 
 enum SystemType {
     Basic,
@@ -83,23 +84,95 @@ fn impl_basic_system(ast: &syn::DeriveInput) -> quote::Tokens {
 }
 
 fn impl_entity_system(ast: &syn::DeriveInput) -> quote::Tokens {
-    let _todo = ast;
-    quote!{}
+    let name = &ast.ident;
+    let mut cs_data = None;
+    let mut init_func = None;
+    let mut process_func = None;
+    let mut aspect_all = vec![];
+    let mut aspect_none = vec![];
+
+    let aspect_id = Ident::new(format!("{}EntityAspect", name));
+    let mut aspect_path = None;
+
+    for attr in &ast.attrs {
+        match attr.name() {
+            "data" => cs_data = Some(read_data(&attr.value)),
+            "init" => init_func = Some(read_path_item(&attr.value, || improper_init_fmt())),
+            "process" => process_func = Some(read_path_item(&attr.value, || improper_process_fmt())),
+            "aspect" => aspect_path = read_aspect_meta(&attr.value, &mut aspect_all, &mut aspect_none),
+            _ => (),
+        }
+    }
+
+    let (components, services) = match cs_data {
+        Some((c, s)) => (c, s),
+        None => (quote_path("::Components"), quote_path("::Services")),
+    };
+
+    let init = if let Some(init_func) = init_func {
+        quote! { #init_func() }
+    } else {
+        quote! { Default::default() }
+    };
+
+    let datahelper = quote! { ::conniecs::world::DataHelper<Self::Components, Self::Services> };
+    let entiter = quote! { ::conniecs::entity::EntityIter<Self::Components> };
+
+    let process = if let Some(proc_func) = process_func {
+        let proc_func = quote_path(&proc_func);
+        quote! {
+            impl ::conniecs::system::EntityProcess for #name {
+                fn process(&mut self, entities: #entiter, data: &mut #datahelper) {
+                    #proc_func(self, entities, data);
+                }
+            }
+        }
+    } else {
+        quote!{}
+    };
+
+    let (aspect, aspect_id) = if let Some(aspect_path) = aspect_path {
+        (quote!{}, aspect_path)
+    } else {
+        let aspect = quote_aspect(&aspect_id, &components, &aspect_all, &aspect_none);
+        let aspect = quote! { #[derive(Copy, Clone, Debug)] pub struct #aspect_id; #aspect };
+        (aspect, quote! { #aspect_id })
+    };
+
+    let filterdef = quote! {
+        impl ::conniecs::system::FilteredEntitySystem for #name {
+            fn create_aspect() -> ::conniecs::aspect::Aspect<Self::Components> {
+                ::conniecs::aspect::Aspect::new( #aspect_id )
+            }
+        }
+    };
+
+    quote! {
+        impl ::conniecs::system::System for #name {
+            type Components = #components;
+            type Services = #services;
+
+            fn build_system() -> Self {
+                #init
+            }
+        }
+        
+        #process
+        #aspect
+        #filterdef
+    }
 }
 
 fn impl_lazy_system(ast: &syn::DeriveInput) -> quote::Tokens {
-    let _todo = ast;
-    quote!{}
+    impl_basic_system(ast)
 }
 
 fn impl_interval_system(ast: &syn::DeriveInput) -> quote::Tokens {
-    let _todo = ast;
-    quote!{}
+    impl_basic_system(ast)
 }
 
 fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
-    let _todo = ast;
-    quote!{}
+    impl_basic_system(ast)
 }
 
 fn read_systy(attr: &MetaItem) -> SystemType {

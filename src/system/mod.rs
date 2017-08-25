@@ -3,7 +3,11 @@ use component::ComponentManager;
 use services::ServiceManager;
 use world::DataHelper;
 
+pub use system::entity::{EntityProcess, EntitySystem, FilteredEntitySystem};
+pub use system::lazy::LazySystem;
+
 pub mod entity;
+pub mod lazy;
 
 pub trait System {
     type Components: ComponentManager;

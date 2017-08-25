@@ -1,5 +1,6 @@
 extern crate vec_map;
 extern crate index_pool;
+extern crate fnv;
 
 pub use aspect::Aspect;
 pub use component::{Component, ComponentList, ComponentManager};

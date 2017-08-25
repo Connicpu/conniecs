@@ -19,39 +19,60 @@ pub trait EntityProcess: FilteredEntitySystem {
 /// This trait is implemented automatically when you `#[derive(System)]` with the following:
 ///
 /// ```
-///# #[macro_use] extern crate conniecs_derive; extern crate conniecs;
-///# #[derive(ComponentManager)] struct Components { #[hot] pub foo: conniecs::ComponentList<Components, ()>, }
-///# #[derive(System)]
-///# #[data(Components, services = "()")]
+/// # #[macro_use] extern crate conniecs_derive; extern crate conniecs;
+/// # use conniecs::{EntityIter, DataHelper};
+/// # #[derive(ComponentManager)] struct Components { #[hot] pub foo: conniecs::ComponentList<Components, ()>, }
+/// #[derive(System, Default)]
 /// #[system_type(entity)]
-/// #[aspect(all(foo))]
-///# struct MySystem;
-///# fn main() {}
+/// #[aspect = "some::aspect::UnitStruct"]
+/// #[process(process)]
+/// struct MySystem;
+/// # fn process(_: &mut MySystem, _: EntityIter<Components>, _: &mut DataHelper<Components, Services>) {}
+/// # mod some { pub mod aspect { #[derive(Aspect, Copy, Clone)] #[aspect(all(foo))] pub struct UnitStruct; } }
+/// # #[derive(ServiceManager, Default)] struct Services {}
+/// # #[derive(SystemManager)] struct Systems { #[passive] sys: conniecs::system::EntitySystem<MySystem> }
+/// # fn main() { conniecs::World::<Systems>::new(); }
 /// ```
 ///
 /// or
 ///
 /// ```
-///# #[macro_use] extern crate conniecs_derive; extern crate conniecs;
-///# #[derive(ComponentManager)] struct Components { #[hot] pub foo: conniecs::ComponentList<Components, ()>, }
-///# #[derive(System)]
-///# #[data(Components, services = "()")]
+/// # #[macro_use] extern crate conniecs_derive; extern crate conniecs;
+/// # use conniecs::{EntityIter};
+/// # #[derive(ComponentManager)] struct Components { #[hot] pub foo: conniecs::ComponentList<Components, String>, }
+/// #[derive(System, Default)]
 /// #[system_type(entity)]
-/// #[aspect = "some::aspect::UnitStruct"]
-///# struct MySystem;
-///# fn main() {}
+/// #[aspect(all(foo))]
+/// #[process = "process"]
+/// struct MySystem;
+///
+/// type DataHelper = conniecs::DataHelper<Components, Services>;
+/// fn process(_: &mut MySystem, entities: EntityIter<Components>, data: &mut DataHelper) {
+///     for entity in entities {
+///         println!("boop the {}", &data.components.foo[entity]);
+///     }
+/// }
+/// # #[derive(ServiceManager, Default)] struct Services {}
+/// # #[derive(SystemManager)] struct Systems { #[passive] sys: conniecs::system::EntitySystem<MySystem> }
+/// # fn main() { conniecs::World::<Systems>::new(); }
 /// ```
 pub trait FilteredEntitySystem: System {
     fn create_aspect() -> Aspect<Self::Components>;
 }
 
-pub struct EntitySystem<T: EntityProcess> {
+pub struct EntitySystem<T>
+where
+    T: EntityProcess,
+{
     pub inner: T,
     interested: HashMap<Entity, IndexedEntity<T::Components>>,
     aspect: Aspect<T::Components>,
 }
 
-impl<T: EntityProcess> EntitySystem<T> {
+impl<T> EntitySystem<T>
+where
+    T: EntityProcess,
+{
     pub fn new() -> EntitySystem<T> {
         EntitySystem {
             interested: HashMap::new(),
@@ -61,20 +82,29 @@ impl<T: EntityProcess> EntitySystem<T> {
     }
 }
 
-impl<T: EntityProcess> Deref for EntitySystem<T> {
+impl<T> Deref for EntitySystem<T>
+where
+    T: EntityProcess,
+{
     type Target = T;
     fn deref(&self) -> &T {
         &self.inner
     }
 }
 
-impl<T: EntityProcess> DerefMut for EntitySystem<T> {
+impl<T> DerefMut for EntitySystem<T>
+where
+    T: EntityProcess,
+{
     fn deref_mut(&mut self) -> &mut T {
         &mut self.inner
     }
 }
 
-impl<T: EntityProcess> System for EntitySystem<T> {
+impl<T> System for EntitySystem<T>
+where
+    T: EntityProcess,
+{
     type Components = T::Components;
     type Services = T::Services;
 
@@ -129,7 +159,10 @@ impl<T: EntityProcess> System for EntitySystem<T> {
     }
 }
 
-impl<T: EntityProcess> Process for EntitySystem<T> {
+impl<T> Process for EntitySystem<T>
+where
+    T: EntityProcess,
+{
     fn process(&mut self, data: &mut DataHelper<T::Components, T::Services>) {
         self.inner
             .process(EntityIter::Map(self.interested.values()), data);

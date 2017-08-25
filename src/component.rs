@@ -1,4 +1,5 @@
 use vec_map::VecMap;
+use fnv::FnvHashMap;
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -37,7 +38,7 @@ where
     T: Component,
 {
     Hot(VecMap<T>),
-    Cold(HashMap<usize, T>),
+    Cold(FnvHashMap<usize, T>),
 }
 
 impl<C, T> ComponentList<C, T>
@@ -54,7 +55,7 @@ where
 
     pub fn cold() -> Self {
         ComponentList {
-            inner: Cold(HashMap::new()),
+            inner: Cold(HashMap::with_hasher(Default::default())),
             _marker: PhantomData,
         }
     }

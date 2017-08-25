@@ -1,6 +1,26 @@
-use syn::{self, MetaItem, NestedMetaItem, Ident};
+use syn::{self, MetaItem, NestedMetaItem, Ident, Lit};
 use quote;
 use {read_path_item, quote_path, improper_attr_format};
+
+pub fn quote_aspect(ty: &Ident, cty: &quote::Tokens, all_filters: &[&Ident], none_filters: &[&Ident]) -> quote::Tokens {
+    quote! {
+        impl ::conniecs::aspect::AspectFilter<#cty> for #ty {
+            fn check<'a>(&self, entity: ::conniecs::EntityData<'a, #cty >, components: & #cty ) -> bool {
+                #(
+                    if !components.#all_filters.has(entity) {
+                        return false;
+                    }
+                )*
+                #(
+                    if components.#none_filters.has(entity) {
+                        return false;
+                    }
+                )*
+                true
+            }
+        }
+    }
+}
 
 pub fn impl_aspect(ast: syn::DeriveInput) -> quote::Tokens {
     let ty = &ast.ident;
@@ -30,22 +50,19 @@ pub fn impl_aspect(ast: syn::DeriveInput) -> quote::Tokens {
         None => quote_path("::Components"),
     };
 
-    quote! {
-        impl ::conniecs::aspect::AspectFilter<#cty> for #ty {
-            fn check<'a>(&self, entity: ::conniecs::EntityData<'a, #cty >, components: & #cty ) -> bool {
-                #(
-                    if !components.#all_filters.has(entity) {
-                        return false;
-                    }
-                )*
-                #(
-                    if components.#none_filters.has(entity) {
-                        return false;
-                    }
-                )*
-                true
-            }
+    quote_aspect(ty, &cty, &all_filters, &none_filters)
+}
+
+pub fn read_aspect_meta<'a>(attr: &'a MetaItem, all: &mut Vec<&'a Ident>, none: &mut Vec<&'a Ident>) -> Option<quote::Tokens> {
+    match attr {
+        &MetaItem::List(_, ref items) => {
+            read_aspect(items, all, none);
+            None
         }
+        &MetaItem::NameValue(_, Lit::Str(ref path, _)) => {
+            Some(quote_path(path))
+        }
+        _ => improper_format(),
     }
 }
 

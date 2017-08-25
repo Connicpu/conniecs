@@ -3,12 +3,17 @@ authors = ["Connie Hilarides <conni_h@outlook.com>"]
 name = "conniecs"
 version = "0.1.0"
 
+[build-dependencies]
+
+[build-dependencies.conniecs-derive]
+path = "conniecs-derive"
+
 [dependencies]
+fnv = "1.0.5"
 index-pool = "1.0.1"
 vec_map = "0.8.0"
 
-[dev-dependencies.conniecs-derive]
-path = "conniecs-derive"
+[dev-dependencies]
 
-[build-dependencies.conniecs-derive]
+[dev-dependencies.conniecs-derive]
 path = "conniecs-derive"
