@@ -1,11 +1,9 @@
 //! Systems to specifically deal with entities.
 
-use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
-
 use aspect::Aspect;
-use entity::{Entity, EntityData, EntityIter, IndexedEntity};
+use entity::{EntityData, EntityIter};
 use system::{Process, System};
+use system::watcher::Watcher;
 use world::DataHelper;
 
 pub trait EntityProcess: FilteredEntitySystem {
@@ -65,8 +63,7 @@ where
     T: EntityProcess,
 {
     pub inner: T,
-    interested: HashMap<Entity, IndexedEntity<T::Components>>,
-    aspect: Aspect<T::Components>,
+    watcher: Watcher<T::Components>,
 }
 
 impl<T> EntitySystem<T>
@@ -75,29 +72,9 @@ where
 {
     pub fn new() -> EntitySystem<T> {
         EntitySystem {
-            interested: HashMap::new(),
-            aspect: T::create_aspect(),
             inner: T::build_system(),
+            watcher: Watcher::new(T::create_aspect()),
         }
-    }
-}
-
-impl<T> Deref for EntitySystem<T>
-where
-    T: EntityProcess,
-{
-    type Target = T;
-    fn deref(&self) -> &T {
-        &self.inner
-    }
-}
-
-impl<T> DerefMut for EntitySystem<T>
-where
-    T: EntityProcess,
-{
-    fn deref_mut(&mut self) -> &mut T {
-        &mut self.inner
     }
 }
 
@@ -118,10 +95,7 @@ where
         components: &T::Components,
         services: &mut T::Services,
     ) {
-        if self.aspect.check(entity, components) {
-            self.interested.insert(**entity, entity.__clone());
-            self.inner.activated(entity, components, services);
-        }
+        self.watcher.activated(entity, components, services, &mut self.inner);
     }
 
     fn reactivated(
@@ -130,21 +104,7 @@ where
         components: &T::Components,
         services: &mut T::Services,
     ) {
-        match (
-            self.interested.contains_key(&entity),
-            self.aspect.check(entity, components),
-        ) {
-            (true, true) => self.inner.reactivated(entity, components, services),
-            (true, false) => {
-                self.interested.remove(&entity);
-                self.inner.deactivated(entity, components, services);
-            }
-            (false, true) => {
-                self.interested.insert(**entity, entity.__clone());
-                self.inner.activated(entity, components, services);
-            }
-            (false, false) => {}
-        }
+        self.watcher.reactivated(entity, components, services, &mut self.inner);
     }
 
     fn deactivated(
@@ -153,9 +113,7 @@ where
         components: &T::Components,
         services: &mut T::Services,
     ) {
-        if self.interested.remove(&entity).is_some() {
-            self.inner.deactivated(entity, components, services);
-        }
+        self.watcher.deactivated(entity, components, services, &mut self.inner);
     }
 }
 
@@ -165,6 +123,6 @@ where
 {
     fn process(&mut self, data: &mut DataHelper<T::Components, T::Services>) {
         self.inner
-            .process(EntityIter::Map(self.interested.values()), data);
+            .process(EntityIter::Map(self.watcher.interested.values()), data);
     }
 }

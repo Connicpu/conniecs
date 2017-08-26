@@ -11,6 +11,7 @@ path = "conniecs-derive"
 [dependencies]
 fnv = "1.0.5"
 index-pool = "1.0.1"
+time = "0.1.38"
 vec_map = "0.8.0"
 
 [dev-dependencies]

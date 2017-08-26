@@ -79,6 +79,7 @@ where
 }
 
 // Inner Entity Iterator
+#[derive(Clone)]
 pub enum EntityIter<'a, C>
 where
     C: ComponentManager,
