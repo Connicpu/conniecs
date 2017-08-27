@@ -1,3 +1,5 @@
+//! TODO: Add documentation including describing how the derive macros work
+
 use time;
 
 use std::ops::{Deref, DerefMut};

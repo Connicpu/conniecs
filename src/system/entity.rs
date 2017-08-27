@@ -1,4 +1,4 @@
-//! Systems to specifically deal with entities.
+//! TODO: Add documentation including describing how the derive macros work
 
 use std::ops::{Deref, DerefMut};
 

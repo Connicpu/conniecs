@@ -1,3 +1,5 @@
+//! TODO: Add documentation including describing how the derive macros work
+
 use vec_map::VecMap;
 use fnv::FnvHashMap;
 

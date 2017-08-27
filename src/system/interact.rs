@@ -1,3 +1,5 @@
+//! TODO: Add documentation including describing how the derive macros work
+
 use std::ops::{Deref, DerefMut};
 
 use aspect::Aspect;

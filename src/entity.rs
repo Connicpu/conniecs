@@ -1,3 +1,5 @@
+//! TODO: Add documentation including describing how the derive macros work
+
 use index_pool::IndexPool;
 
 use std::collections::hash_map::{HashMap, Values};

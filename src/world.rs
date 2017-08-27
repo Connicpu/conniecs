@@ -1,3 +1,5 @@
+//! TODO: Add documentation including describing how the derive macros work
+
 use component::ComponentManager;
 use entity::{BuildData, Entity, EntityBuilder, EntityData, EntityIter, EntityManager,
              EntityModifier, ModifyData};
