@@ -2,6 +2,12 @@
 authors = ["Connie Hilarides <conni_h@outlook.com>"]
 name = "conniecs-derive"
 version = "0.1.0"
+license = "MIT"
+repository = "https://github.com/Connicpu/conniecs"
+documentation = "https://docs.rs/conniecs"
+description = """
+Provides proc macros for deriving most of the boilerplate in the `conniecs` crate
+"""
 
 [lib]
 proc-macro = true

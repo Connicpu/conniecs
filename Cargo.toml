@@ -2,11 +2,14 @@
 authors = ["Connie Hilarides <conni_h@outlook.com>"]
 name = "conniecs"
 version = "0.1.0"
+repository = "https://github.com/Connicpu/conniecs"
+documentation = "https://docs.rs/conniecs"
+description = """
+A simple ECS system based off of the `ecs` crate, but with some minor API
+adjustments and derive macros for implementing most of the boilerplate.
 
-[build-dependencies]
-
-[build-dependencies.conniecs-derive]
-path = "conniecs-derive"
+Make sure to include the `conniecs-derive` crate as well.
+"""
 
 [dependencies]
 fnv = "1.0.5"
@@ -14,7 +17,9 @@ index-pool = "1.0.1"
 time = "0.1.38"
 vec_map = "0.8.0"
 
-[dev-dependencies]
-
 [dev-dependencies.conniecs-derive]
 path = "conniecs-derive"
+
+[build-dependencies.conniecs-derive]
+path = "conniecs-derive"
+
