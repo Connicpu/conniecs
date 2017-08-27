@@ -1,5 +1,7 @@
 use time;
 
+use std::ops::{Deref, DerefMut};
+
 use entity::EntityData;
 use system::{Process, System};
 use world::DataHelper;
@@ -15,6 +17,25 @@ where
 {
     pub inner: T,
     pub ticker: TickerState,
+}
+
+impl<T> Deref for IntervalSystem<T>
+where
+    T: SystemInterval,
+{
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for IntervalSystem<T>
+where
+    T: SystemInterval,
+{
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
 }
 
 impl<T> System for IntervalSystem<T>
@@ -72,7 +93,7 @@ where
 
 #[derive(Copy, Clone, Debug)]
 pub enum TickerState {
-    Frames { interval: u16, ticks: u16 },
+    Frames { interval: u64, ticks: u64 },
     Timed {
         interval: u64,
         next_tick: Option<u64>,
@@ -80,20 +101,6 @@ pub enum TickerState {
 }
 
 impl TickerState {
-    pub fn frames(interval: u16) -> Self {
-        TickerState::Frames {
-            interval: interval,
-            ticks: 0,
-        }
-    }
-
-    pub fn timed(interval: u64) -> Self {
-        TickerState::Timed {
-            interval: interval,
-            next_tick: None,
-        }
-    }
-
     pub fn tick(&mut self) -> bool {
         match *self {
             TickerState::Frames {

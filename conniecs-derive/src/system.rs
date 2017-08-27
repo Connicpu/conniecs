@@ -209,7 +209,152 @@ fn impl_lazy_system(ast: &syn::DeriveInput) -> quote::Tokens {
 }
 
 fn impl_interval_system(ast: &syn::DeriveInput) -> quote::Tokens {
-    impl_basic_system(ast)
+    let name = &ast.ident;
+    let mut cs_data = None;
+    let mut init_func = None;
+    let mut process_func = None;
+    let mut interval = None;
+
+    for attr in &ast.attrs {
+        match attr.name() {
+            "data" => cs_data = Some(read_data(&attr.value)),
+            "init" => init_func = Some(read_path_item(&attr.value, || improper_init_fmt())),
+            "process" => process_func = Some(read_path_item(&attr.value, || improper_process_fmt())),
+            "interval" => interval = Some(parse_interval(&attr.value)),
+            _ => (),
+        }
+    }
+
+    let (components, services) = match cs_data {
+        Some((c, s)) => (c, s),
+        None => (quote_path("::Components"), quote_path("::Services")),
+    };
+
+    let init = if let Some(init_func) = init_func {
+        quote! { #init_func() }
+    } else {
+        quote! { Default::default() }
+    };
+
+    let process = if let Some(proc_func) = process_func {
+        let proc_func = quote_path(&proc_func);
+        quote! {
+            impl ::conniecs::system::Process for #name {
+                fn process(&mut self, data: &mut ::conniecs::DataHelper<Self::Components, Self::Services>) {
+                    #proc_func(self, data);
+                }
+            }
+        }
+    } else {
+        quote!{}
+    };
+
+    let iv = interval.unwrap_or_else(|| panic!("#[interval = ...] attribute must be specified"));
+
+    let create_interval = quote! {
+        impl ::conniecs::system::interval::SystemInterval for #name {
+            fn create_interval() -> ::conniecs::system::interval::TickerState {
+                #iv
+            }
+        }
+    };
+
+    quote! {
+        impl ::conniecs::system::System for #name {
+            type Components = #components;
+            type Services = #services;
+
+            fn build_system() -> Self {
+                #init
+            }
+        }
+        
+        #process
+        #create_interval
+    }
+}
+
+fn parse_interval(attr: &MetaItem) -> quote::Tokens {
+    match attr {
+        &MetaItem::NameValue(_, Lit::Str(ref time, _)) => parse_iv_time(time),
+        &MetaItem::NameValue(_, Lit::Int(time, _)) => frame_iv(time),
+        &MetaItem::List(_, ref items) => parse_explicit_iv(items),
+        _ => improper_interval_fmt(),
+    }
+}
+
+fn parse_u64(time: &str) -> u64 {
+    time.parse().map_err(|_| improper_interval_fmt()).unwrap()
+}
+
+fn parse_iv_time(time: &str) -> quote::Tokens {
+    let len = time.len();
+
+    let ns = if time.ends_with("ms") && len > 2 {
+        let iv = parse_u64(&time[..len - 2]);
+        iv * 1_000_000
+    } else if (time.ends_with("us") || time.ends_with("μs")) && len > 2 {
+        let iv = parse_u64(&time[..len - 2]);
+        iv * 1_000
+    } else if time.ends_with("ns") && len > 2 {
+        let iv = parse_u64(&time[..len - 2]);
+        iv
+    } else if time.ends_with("s") && len > 1 {
+        let iv = parse_u64(&time[..len - 1]);
+        iv * 1_000_000_000
+    } else {
+        let iv = parse_u64(time);
+        return frame_iv(iv);
+    };
+
+    frame_ns(ns)
+}
+
+fn parse_explicit_iv(items: &[NestedMetaItem]) -> quote::Tokens {
+    if items.len() != 1 { improper_interval_fmt(); }
+
+    match items[0] {
+        NestedMetaItem::Literal(Lit::Str(ref time, _)) => parse_iv_time(time),
+        NestedMetaItem::Literal(Lit::Int(time, _)) => frame_iv(time),
+        NestedMetaItem::MetaItem(MetaItem::NameValue(ref kind, ref lit)) => {
+            let iv = match lit {
+                &Lit::Str(ref time, _) => parse_u64(time),
+                &Lit::Int(iv, _) => iv,
+                _ => improper_interval_fmt(),
+            };
+            let ns = match kind.as_ref() {
+                "ticks" => return frame_iv(iv),
+
+                "s" => iv * 1_000_000_000,
+                "ms" => iv * 1_000_000,
+                "us" | "μs" => iv * 1_000,
+                "ns" => iv,
+
+                _ => improper_interval_fmt(),
+            };
+
+            frame_ns(ns)
+        }
+        _ => improper_interval_fmt(),
+    }
+}
+
+fn frame_iv(iv: u64) -> quote::Tokens {
+    quote! {
+        ::conniecs::system::interval::TickerState::Frames {
+            interval: #iv,
+            ticks: 0,
+        }
+    }
+}
+
+fn frame_ns(ns: u64) -> quote::Tokens {
+    quote! {
+        ::conniecs::system::interval::TickerState::Timed {
+            interval: #ns,
+            next_tick: None,
+        }
+    }
 }
 
 fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
@@ -364,4 +509,8 @@ fn improper_init_fmt() -> ! {
 
 fn improper_process_fmt() -> ! {
     improper_attr_format("#[process(...)]", "conniecs::system");
+}
+
+fn improper_interval_fmt() -> ! {
+    improper_attr_format("#[interval = ...]", "conniecs::system");
 }

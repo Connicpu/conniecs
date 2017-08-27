@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use entity::EntityData;
 use system::{Process, System};
 use world::DataHelper;
@@ -7,6 +9,25 @@ where
     T: System,
 {
     pub inner: Option<T>,
+}
+
+impl<T> Deref for LazySystem<T>
+where
+    T: System,
+{
+    type Target = Option<T>;
+    fn deref(&self) -> &Option<T> {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for LazySystem<T>
+where
+    T: System,
+{
+    fn deref_mut(&mut self) -> &mut Option<T> {
+        &mut self.inner
+    }
 }
 
 impl<T> LazySystem<T>

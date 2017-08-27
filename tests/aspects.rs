@@ -99,12 +99,13 @@ pub struct IVSystem {
 }
 
 fn interval_process(iv: &mut IVSystem, _: &mut DataHelper) {
-    iv.booped = true;
+    iv.booped = !iv.booped;
 }
 
 #[test]
 pub fn simulate() {
     let mut world = conniecs::World::<Systems>::new();
+    assert_eq!(world.systems.ivsystem.booped, false);
 
     let asdf = world.data.create_entity(|e, c, _| {
         // We need a foo!
@@ -126,6 +127,7 @@ pub fn simulate() {
     });
 
     world.update();
+    assert_eq!(world.systems.ivsystem.booped, false);
 
     world.data.with_entity_data(asdf, |e, c, _| {
         assert_eq!(&c.foo[e], "asdfghjkl");
@@ -140,6 +142,7 @@ pub fn simulate() {
     });
 
     world.update();
+    assert_eq!(world.systems.ivsystem.booped, false);
 
     world.data.with_entity_data(asdf, |e, c, _| {
         assert_eq!(&c.foo[e], "asdfghjkl");
@@ -152,6 +155,7 @@ pub fn simulate() {
     world.data.remove_entity(bar);
 
     world.update();
+    assert_eq!(world.systems.ivsystem.booped, true);
 
     world.data.with_entity_data(baz, |e, c, _| {
         assert_eq!(c.baz[e][0], 1.25);

@@ -1,5 +1,7 @@
 //! Systems to specifically deal with entities.
 
+use std::ops::{Deref, DerefMut};
+
 use aspect::Aspect;
 use entity::{EntityData, EntityIter};
 use system::{Process, System};
@@ -66,6 +68,25 @@ where
     watcher: Watcher<T::Components>,
 }
 
+impl<T> Deref for EntitySystem<T>
+where
+    T: EntityProcess,
+{
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for EntitySystem<T>
+where
+    T: EntityProcess,
+{
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
+}
+
 impl<T> EntitySystem<T>
 where
     T: EntityProcess,
@@ -95,7 +116,8 @@ where
         components: &T::Components,
         services: &mut T::Services,
     ) {
-        self.watcher.activated(entity, components, services, &mut self.inner);
+        self.watcher
+            .activated(entity, components, services, &mut self.inner);
     }
 
     fn reactivated(
@@ -104,7 +126,8 @@ where
         components: &T::Components,
         services: &mut T::Services,
     ) {
-        self.watcher.reactivated(entity, components, services, &mut self.inner);
+        self.watcher
+            .reactivated(entity, components, services, &mut self.inner);
     }
 
     fn deactivated(
@@ -113,7 +136,8 @@ where
         components: &T::Components,
         services: &mut T::Services,
     ) {
-        self.watcher.deactivated(entity, components, services, &mut self.inner);
+        self.watcher
+            .deactivated(entity, components, services, &mut self.inner);
     }
 }
 

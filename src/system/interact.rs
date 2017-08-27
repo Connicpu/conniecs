@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use aspect::Aspect;
 use entity::{EntityData, EntityIter};
 use system::{Process, System};
@@ -25,6 +27,25 @@ where
     pub inner: T,
     watcher_a: Watcher<T::Components>,
     watcher_b: Watcher<T::Components>,
+}
+
+impl<T> Deref for InteractSystem<T>
+where
+    T: InteractProcess,
+{
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for InteractSystem<T>
+where
+    T: InteractProcess,
+{
+    fn deref_mut(&mut self) -> &mut T {
+        &mut self.inner
+    }
 }
 
 impl<T> System for InteractSystem<T>
