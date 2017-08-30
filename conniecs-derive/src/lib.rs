@@ -60,7 +60,9 @@ pub fn derive_services(input: TokenStream) -> TokenStream {
     gen.parse().unwrap()
 }
 
-#[proc_macro_derive(System, attributes(data, system_type, process, aspect, aspect_a, aspect_b, interval, timed_interval))]
+#[proc_macro_derive(System,
+                    attributes(data, system_type, process, aspect, aspect_a, aspect_b,
+                                 interval, timed_interval, activated, reactivated, deactivated))]
 pub fn derive_system(input: TokenStream) -> TokenStream {
     // Construct a string representation of the type definition
     let s = input.to_string();

@@ -10,6 +10,7 @@ use conniecs::system::IntervalSystem;
 type Comps<T> = ComponentList<Components, T>;
 type EntityIter<'a> = conniecs::EntityIter<'a, Components>;
 type DataHelper = conniecs::DataHelper<Components, Services>;
+type EntityData<'a> = conniecs::EntityData<'a, Components>;
 
 #[derive(Aspect)]
 #[aspect(all(foo, bar))]
@@ -93,6 +94,7 @@ fn iprocess(_: &mut ISystem, bars: EntityIter, bazes: EntityIter, data: &mut Dat
 #[derive(Default, System)]
 #[system_type(Interval)]
 #[process = "interval_process"]
+#[activated = "activated"]
 #[interval = "3"]
 pub struct IVSystem {
     pub booped: bool,
@@ -102,10 +104,17 @@ fn interval_process(iv: &mut IVSystem, _: &mut DataHelper) {
     iv.booped = !iv.booped;
 }
 
+static ATOMIC_BOOP: std::sync::atomic::AtomicBool = std::sync::atomic::ATOMIC_BOOL_INIT;
+
+fn activated(_: &mut IVSystem, _: EntityData, _: &Components, _: &mut Services) {
+    ATOMIC_BOOP.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
 #[test]
 pub fn simulate() {
     let mut world = conniecs::World::<Systems>::new();
     assert_eq!(world.systems.ivsystem.booped, false);
+    assert_eq!(ATOMIC_BOOP.load(std::sync::atomic::Ordering::SeqCst), false);
 
     let asdf = world.data.create_entity(|e, c, _| {
         // We need a foo!
@@ -128,6 +137,7 @@ pub fn simulate() {
 
     world.update();
     assert_eq!(world.systems.ivsystem.booped, false);
+    assert_eq!(ATOMIC_BOOP.load(std::sync::atomic::Ordering::SeqCst), true);
 
     world.data.with_entity_data(asdf, |e, c, _| {
         assert_eq!(&c.foo[e], "asdfghjkl");

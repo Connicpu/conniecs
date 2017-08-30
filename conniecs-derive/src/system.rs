@@ -1,4 +1,4 @@
-use syn::{self, MetaItem, NestedMetaItem, Lit, Ident};
+use syn::{self, MetaItem, NestedMetaItem, Lit, Ident, Attribute};
 use quote;
 use {read_path_item, improper_attr_format, quote_path};
 use aspect::{read_aspect_meta, quote_aspect};
@@ -69,6 +69,8 @@ fn impl_basic_system(ast: &syn::DeriveInput) -> quote::Tokens {
         quote!{}
     };
 
+    let activations = read_activations(&ast.attrs);
+
     quote! {
         impl ::conniecs::system::System for #name {
             type Components = #components;
@@ -77,6 +79,8 @@ fn impl_basic_system(ast: &syn::DeriveInput) -> quote::Tokens {
             fn build_system() -> Self {
                 #init
             }
+
+            #activations
         }
         
         #process
@@ -147,6 +151,8 @@ fn impl_entity_system(ast: &syn::DeriveInput) -> quote::Tokens {
         }
     };
 
+    let activations = read_activations(&ast.attrs);
+
     quote! {
         impl ::conniecs::system::System for #name {
             type Components = #components;
@@ -155,6 +161,8 @@ fn impl_entity_system(ast: &syn::DeriveInput) -> quote::Tokens {
             fn build_system() -> Self {
                 #init
             }
+
+            #activations
         }
         
         #process
@@ -194,6 +202,8 @@ fn impl_lazy_system(ast: &syn::DeriveInput) -> quote::Tokens {
         quote!{}
     };
 
+    let activations = read_activations(&ast.attrs);
+
     quote! {
         impl ::conniecs::system::System for #name {
             type Components = #components;
@@ -202,6 +212,8 @@ fn impl_lazy_system(ast: &syn::DeriveInput) -> quote::Tokens {
             fn build_system() -> Self {
                 unimplemented!()
             }
+
+            #activations
         }
         
         #process
@@ -259,6 +271,8 @@ fn impl_interval_system(ast: &syn::DeriveInput) -> quote::Tokens {
         }
     };
 
+    let activations = read_activations(&ast.attrs);
+
     quote! {
         impl ::conniecs::system::System for #name {
             type Components = #components;
@@ -267,6 +281,8 @@ fn impl_interval_system(ast: &syn::DeriveInput) -> quote::Tokens {
             fn build_system() -> Self {
                 #init
             }
+
+            #activations
         }
         
         #process
@@ -437,6 +453,8 @@ fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
         }
     };
 
+    let activations = read_activations(&ast.attrs);
+
     quote! {
         impl ::conniecs::system::System for #name {
             type Components = #components;
@@ -445,12 +463,56 @@ fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
             fn build_system() -> Self {
                 #init
             }
+
+            #activations
         }
         
         #process
         #aspect_a
         #aspect_b
         #filterdef
+    }
+}
+
+fn read_activations(attrs: &[Attribute]) -> quote::Tokens {
+    let mut activated = None;
+    let mut reactivated = None;
+    let mut deactivated = None;
+
+    for attr in attrs {
+        match attr.name() {
+            "activated" => activated = Some(read_path_item(&attr.value, || improper_activated_fmt())),
+            "reactivated" => reactivated = Some(read_path_item(&attr.value, || improper_reactivated_fmt())),
+            "deactivated" => deactivated = Some(read_path_item(&attr.value, || improper_deactivated_fmt())),
+            _ => (),
+        }
+    }
+
+    let activated = activation_fn("activated".into(), activated.map(|s| quote_path(&s)));
+    let reactivated = activation_fn("reactivated".into(), reactivated.map(|s| quote_path(&s)));
+    let deactivated = activation_fn("deactivated".into(), deactivated.map(|s| quote_path(&s)));
+
+    quote! {
+        #activated
+        #reactivated
+        #deactivated
+    }
+}
+
+fn activation_fn(name: Ident, item: Option<quote::Tokens>) -> quote::Tokens {
+    if let Some(item) = item {
+        quote! {
+            fn #name (
+                &mut self,
+                entity: ::conniecs::entity::EntityData<Self::Components>,
+                components: &Self::Components,
+                services: &mut Self::Services,
+            ) {
+                #item (self, entity, components, services)
+            }
+        }
+    } else {
+        quote!{}
     }
 }
 
@@ -513,4 +575,16 @@ fn improper_process_fmt() -> ! {
 
 fn improper_interval_fmt() -> ! {
     improper_attr_format("#[interval = ...]", "conniecs::system");
+}
+
+fn improper_activated_fmt() -> ! {
+    improper_attr_format("#[activated = ...]", "conniecs::system");
+}
+
+fn improper_reactivated_fmt() -> ! {
+    improper_attr_format("#[reactivated = ...]", "conniecs::system");
+}
+
+fn improper_deactivated_fmt() -> ! {
+    improper_attr_format("#[deactivated = ...]", "conniecs::system");
 }
