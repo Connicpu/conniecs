@@ -1,16 +1,11 @@
 [package]
 authors = ["Connie Hilarides <conni_h@outlook.com>"]
-name = "conniecs"
-version = "0.1.1"
-repository = "https://github.com/Connicpu/conniecs"
+description = "A simple ECS system based off of the `ecs` crate, but with some minor API\nadjustments and derive macros for implementing most of the boilerplate.\n\nMake sure to include the `conniecs-derive` crate as well.\n"
 documentation = "https://docs.rs/conniecs"
 license = "MIT"
-description = """
-A simple ECS system based off of the `ecs` crate, but with some minor API
-adjustments and derive macros for implementing most of the boilerplate.
-
-Make sure to include the `conniecs-derive` crate as well.
-"""
+name = "conniecs"
+repository = "https://github.com/Connicpu/conniecs"
+version = "0.1.1"
 
 [dependencies]
 fnv = "1.0.5"
@@ -18,11 +13,17 @@ index-pool = "1.0.1"
 time = "0.1.38"
 vec_map = "0.8.0"
 
+[dependencies.odds]
+version = "0.2.25"
+optional = true
+
 [dev-dependencies.conniecs-derive]
 path = "conniecs-derive"
-version = "0.1.0"
+version = "0.1.1"
 
 [build-dependencies.conniecs-derive]
 path = "conniecs-derive"
-version = "0.1.0"
+version = "0.1.1"
 
+[features]
+coroutines = ["odds"]
