@@ -6,19 +6,12 @@ use entity::{BuildData, Entity, EntityBuilder, EntityData, EntityIter, EntityMan
 use services::ServiceManager;
 use system::SystemManager;
 
-#[cfg(feature = "coroutines")]
-use coroutines::{BoxCoro, CoroAction, CoroutineManager};
-#[cfg(feature = "coroutines")]
-use std::ops::Generator;
-
 pub struct World<S>
 where
     S: SystemManager,
 {
     pub systems: S,
     pub data: DataHelper<S::Components, S::Services>,
-
-    #[cfg(feature = "coroutines")] pub(crate) coros: CoroutineManager<S::Components, S::Services>,
 }
 
 pub struct DataHelper<C, M>
@@ -29,8 +22,6 @@ where
     pub components: C,
     pub services: M,
     pub(crate) entities: EntityManager<C>,
-
-    #[cfg(feature = "coroutines")] pub(crate) future_coroutines: Vec<BoxCoro>,
 }
 
 impl<C, M> DataHelper<C, M>
@@ -75,16 +66,6 @@ where
     pub fn entities(&self) -> EntityIter<C> {
         self.entities.iter()
     }
-
-    #[cfg(feature = "coroutines")]
-    pub fn queue_coroutine<'a, F, G>(&mut self, f: F)
-    where
-        F: FnOnce(&'static mut DataHelper<C, M>) -> G,
-        G: Generator<Yield = CoroAction, Return = ()> + 'static,
-    {
-        let gen = f(unsafe { &mut *(self as *mut _) });
-        self.future_coroutines.push(Box::new(gen));
-    }
 }
 
 impl<S> World<S>
@@ -98,7 +79,6 @@ where
         World::with_services(Default::default())
     }
 
-    #[cfg(not(feature = "coroutines"))]
     pub fn with_services(services: S::Services) -> Self {
         World {
             systems: S::build_manager(),
@@ -107,20 +87,6 @@ where
                 components: S::Components::build_manager(),
                 entities: EntityManager::new(),
             },
-        }
-    }
-
-    #[cfg(feature = "coroutines")]
-    pub fn with_services(services: S::Services) -> Self {
-        World {
-            systems: S::build_manager(),
-            data: DataHelper {
-                services,
-                components: S::Components::build_manager(),
-                entities: EntityManager::new(),
-                future_coroutines: vec![],
-            },
-            coros: Default::default(),
         }
     }
 
@@ -177,5 +143,17 @@ where
         }
         self.systems.update(&mut self.data);
         self.flush_queue();
+    }
+
+    /// Mass delete all entities and their data
+    pub fn wipe(&mut self) {
+        self.flush_queue();
+
+        for entity in self.data.entities.iter() {
+            self.systems.deactivated(entity, &self.data.components, &mut self.data.services);
+        }
+
+        self.data.entities.clear();
+        self.data.components.__wipe_all();
     }
 }

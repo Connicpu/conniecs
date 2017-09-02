@@ -250,6 +250,11 @@ where
             .remove(&entity)
             .map(|e| self.indices.return_id(e.index()));
     }
+
+    pub fn clear(&mut self) {
+        self.entities.clear();
+        self.indices = IndexPool::new();
+    }
 }
 
 pub struct BuildData<'a, C: ComponentManager>(pub(crate) &'a IndexedEntity<C>);

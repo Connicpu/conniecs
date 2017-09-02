@@ -18,7 +18,7 @@ pub fn impl_components(ast: syn::DeriveInput) -> quote::Tokens {
         }
     };
 
-    let init = if let Some(fields) = fields {
+    let init = if let Some(ref fields) = fields {
         let field_inits = fields.iter().map(|field| field_info(field)).map(
             |(ident, kind)| {
                 quote! { #ident: ::conniecs::component::ComponentList::#kind() }
@@ -34,10 +34,26 @@ pub fn impl_components(ast: syn::DeriveInput) -> quote::Tokens {
         quote! { #name }
     };
 
+    let wipe = if let Some(ref fields) = fields {
+        let fields = fields.iter().map(|field| field.ident.clone());
+        quote! {
+            #(
+                self.#fields.__wipe();
+            )*
+        }
+    } else {
+        quote! {}
+    };
+
     quote! {
         impl ::conniecs::component::ComponentManager for #name {
             fn build_manager() -> Self {
                 #init
+            }
+
+            #[doc(hidden)]
+            fn __wipe_all(&mut self) {
+                #wipe
             }
 
             #[doc(hidden)]

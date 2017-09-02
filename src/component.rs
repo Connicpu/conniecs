@@ -23,6 +23,9 @@ pub trait ComponentManager: 'static {
     fn build_manager() -> Self;
 
     #[doc(hidden)]
+    fn __wipe_all(&mut self);
+
+    #[doc(hidden)]
     fn __please_use_the_derive_attribute();
 }
 
@@ -104,8 +107,13 @@ where
     }
 
     #[doc(hidden)]
-    pub fn clear(&mut self, entity: &IndexedEntity<C>) {
+    pub fn __clear(&mut self, entity: &IndexedEntity<C>) {
         self.inner.remove(entity.index());
+    }
+
+    #[doc(hidden)]
+    pub fn __wipe(&mut self) {
+        self.inner.clear();
     }
 }
 
@@ -180,6 +188,13 @@ where
         match *self {
             Hot(ref mut map) => map.get_mut(index),
             Cold(ref mut map) => map.get_mut(&index),
+        }
+    }
+
+    pub(crate) fn clear(&mut self) {
+        match *self {
+            Hot(ref mut map) => map.clear(),
+            Cold(ref mut map) => map.clear(),
         }
     }
 }

@@ -170,4 +170,6 @@ pub fn simulate() {
     world.data.with_entity_data(baz, |e, c, _| {
         assert_eq!(c.baz[e][0], 1.25);
     });
+
+    world.wipe();
 }

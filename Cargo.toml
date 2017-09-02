@@ -5,17 +5,13 @@ documentation = "https://docs.rs/conniecs"
 license = "MIT"
 name = "conniecs"
 repository = "https://github.com/Connicpu/conniecs"
-version = "0.1.1"
+version = "0.1.2"
 
 [dependencies]
 fnv = "1.0.5"
 index-pool = "1.0.1"
 time = "0.1.38"
 vec_map = "0.8.0"
-
-[dependencies.odds]
-version = "0.2.25"
-optional = true
 
 [dev-dependencies.conniecs-derive]
 path = "conniecs-derive"
@@ -24,6 +20,3 @@ version = "0.1.1"
 [build-dependencies.conniecs-derive]
 path = "conniecs-derive"
 version = "0.1.1"
-
-[features]
-coroutines = ["odds"]
