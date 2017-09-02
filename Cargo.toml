@@ -15,8 +15,8 @@ vec_map = "0.8.0"
 
 [dev-dependencies.conniecs-derive]
 path = "conniecs-derive"
-version = "0.1.1"
+version = "0.1.2"
 
 [build-dependencies.conniecs-derive]
 path = "conniecs-derive"
-version = "0.1.1"
+version = "0.1.2"
