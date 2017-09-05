@@ -137,10 +137,6 @@ where
 
     pub fn update(&mut self) {
         self.flush_queue();
-        #[cfg(feature = "coroutines")]
-        {
-            self.coros.update(&mut self.data);
-        }
         self.systems.update(&mut self.data);
         self.flush_queue();
     }

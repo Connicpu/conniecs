@@ -1,6 +1,8 @@
 //! TODO: Add documentation including describing how the derive macros work
 
 use index_pool::IndexPool;
+use index_pool::iter::IndexIter;
+use vec_map::VecMap;
 
 use std::collections::hash_map::{HashMap, Values};
 use std::marker::PhantomData;
@@ -81,12 +83,44 @@ where
 }
 
 // Inner Entity Iterator
-#[derive(Clone)]
 pub enum EntityIter<'a, C>
 where
     C: ComponentManager,
 {
     Map(Values<'a, Entity, IndexedEntity<C>>),
+    Indexed(IndexedEntityIter<'a, C>),
+}
+
+impl<'a, C> Clone for EntityIter<'a, C>
+where
+    C: ComponentManager,
+{
+    fn clone(&self) -> Self {
+        match *self {
+            EntityIter::Map(ref map) => EntityIter::Map(map.clone()),
+            EntityIter::Indexed(ref ind) => EntityIter::Indexed(ind.clone()),
+        }
+    }
+}
+
+pub struct IndexedEntityIter<'a, C>
+where
+    C: ComponentManager,
+{
+    iter: IndexIter<'a>,
+    values: &'a VecMap<IndexedEntity<C>>,
+}
+
+impl<'a, C> Clone for IndexedEntityIter<'a, C>
+where
+    C: ComponentManager,
+{
+    fn clone(&self) -> Self {
+        IndexedEntityIter {
+            iter: self.iter.clone(),
+            values: self.values.clone(),
+        }
+    }
 }
 
 impl<'a, C> EntityIter<'a, C>
@@ -100,11 +134,6 @@ where
             components: components,
         }
     }
-
-    pub fn clone(&self) -> Self {
-        let EntityIter::Map(ref values) = *self;
-        EntityIter::Map(values.clone())
-    }
 }
 
 impl<'a, C> Iterator for EntityIter<'a, C>
@@ -115,6 +144,10 @@ where
     fn next(&mut self) -> Option<EntityData<'a, C>> {
         match *self {
             EntityIter::Map(ref mut values) => values.next().map(|x| EntityData(x)),
+            EntityIter::Indexed(ref mut iter) => iter.iter
+                .next()
+                .map(|i| iter.values.get(i).unwrap())
+                .map(|x| EntityData(x)),
         }
     }
 }
@@ -146,6 +179,7 @@ where
     C: ComponentManager,
 {
     indices: IndexPool,
+    indexed_entities: VecMap<IndexedEntity<C>>,
     entities: HashMap<Entity, IndexedEntity<C>>,
     event_queue: Vec<Event>,
     next_id: Id,
@@ -158,6 +192,7 @@ where
     pub fn new() -> Self {
         EntityManager {
             indices: IndexPool::new(),
+            indexed_entities: VecMap::new(),
             entities: HashMap::new(),
             event_queue: Vec::new(),
             next_id: 0,
@@ -186,6 +221,7 @@ where
         // laying around. Don't wanna waste that ;)
         self.event_queue = queue;
     }
+
     pub fn create_entity<B, M>(
         &mut self,
         builder: B,
@@ -212,7 +248,10 @@ where
     }
 
     pub fn iter(&self) -> EntityIter<C> {
-        EntityIter::Map(self.entities.values())
+        EntityIter::Indexed(IndexedEntityIter {
+            iter: self.indices.all_indices(),
+            values: &self.indexed_entities,
+        })
     }
 
     pub fn count(&self) -> usize {
@@ -227,14 +266,13 @@ where
     pub fn create(&mut self) -> Entity {
         self.next_id += 1;
         let entity = Entity { id: self.next_id };
-        self.entities.insert(
+        let ie = IndexedEntity {
+            index: self.indices.new_id(),
             entity,
-            IndexedEntity {
-                index: self.indices.new_id(),
-                entity,
-                _marker: PhantomData,
-            },
-        );
+            _marker: PhantomData,
+        };
+        self.indexed_entities.insert(ie.index, ie.__clone());
+        self.entities.insert(entity, ie);
         entity
     }
 
