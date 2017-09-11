@@ -2,6 +2,7 @@
 
 extern crate vec_map;
 extern crate index_pool;
+extern crate free_ranges;
 extern crate fnv;
 extern crate time;
 

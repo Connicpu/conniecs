@@ -22,13 +22,14 @@ pub trait InteractSystemFilter: System {
     fn create_filter_b() -> Aspect<Self::Components>;
 }
 
+#[derive(Debug)]
 pub struct InteractSystem<T>
 where
     T: InteractProcess,
 {
     pub inner: T,
-    watcher_a: Watcher<T::Components>,
-    watcher_b: Watcher<T::Components>,
+    pub watcher_a: Watcher<T::Components>,
+    pub watcher_b: Watcher<T::Components>,
 }
 
 impl<T> Deref for InteractSystem<T>
@@ -107,8 +108,8 @@ where
     T: InteractProcess,
 {
     fn process(&mut self, data: &mut DataHelper<T::Components, T::Services>) {
-        let iter_a = EntityIter::Map(self.watcher_a.interested.values());
-        let iter_b = EntityIter::Map(self.watcher_b.interested.values());
+        let iter_a = self.watcher_a.iter();
+        let iter_b = self.watcher_b.iter();
         self.inner.process(iter_a, iter_b, data);
     }
 }

@@ -16,10 +16,10 @@ type EntityData<'a> = conniecs::EntityData<'a, Components>;
 #[aspect(all(foo, bar))]
 pub struct FooBarAspect;
 
-#[derive(Default, ServiceManager)]
+#[derive(Debug, Default, ServiceManager)]
 pub struct Services;
 
-#[derive(ComponentManager)]
+#[derive(Debug, ComponentManager)]
 pub struct Components {
     #[cold]
     pub foo: Comps<String>,
@@ -33,7 +33,7 @@ pub struct Components {
     pub qux: Comps<Vec<i32>>,
 }
 
-#[derive(SystemManager)]
+#[derive(Debug, SystemManager)]
 pub struct Systems {
     update: Update,
     esystem: EntitySystem<ESystem>,
@@ -44,7 +44,7 @@ pub struct Systems {
     panicker: Panicker,
 }
 
-#[derive(Default, System)]
+#[derive(Debug, Default, System)]
 #[process(process_update)]
 pub struct Update;
 
@@ -56,7 +56,7 @@ fn process_update(_: &mut Update, data: &mut DataHelper) {
     }
 }
 
-#[derive(Default, System)]
+#[derive(Debug, Default, System)]
 #[process(panicker_update)]
 pub struct Panicker;
 
@@ -64,7 +64,7 @@ fn panicker_update(_: &mut Panicker, _: &mut DataHelper) {
     panic!("this shouldn't get called");
 }
 
-#[derive(Default, System)]
+#[derive(Debug, Default, System)]
 #[system_type(Entity)]
 #[process = "eprocess"]
 #[aspect(all(foo), none(qux))]
@@ -76,7 +76,7 @@ fn eprocess(_: &mut ESystem, entities: EntityIter, data: &mut DataHelper) {
     }
 }
 
-#[derive(Default, System)]
+#[derive(Debug, Default, System)]
 #[system_type(Interact)]
 #[process = "iprocess"]
 #[aspect_a(all(bar), none(baz))]
@@ -91,7 +91,7 @@ fn iprocess(_: &mut ISystem, bars: EntityIter, bazes: EntityIter, data: &mut Dat
     }
 }
 
-#[derive(Default, System)]
+#[derive(Debug, Default, System)]
 #[system_type(Interval)]
 #[process = "interval_process"]
 #[activated = "activated"]

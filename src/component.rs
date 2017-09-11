@@ -29,6 +29,7 @@ pub trait ComponentManager: 'static {
     fn __please_use_the_derive_attribute();
 }
 
+#[derive(Debug)]
 pub struct ComponentList<C, T>
 where
     C: ComponentManager,
@@ -38,6 +39,7 @@ where
     _marker: PhantomData<C>,
 }
 
+#[derive(Debug)]
 pub(crate) enum InnerComponentList<T>
 where
     T: Component,
