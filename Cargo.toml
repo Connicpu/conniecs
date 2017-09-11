@@ -4,7 +4,7 @@ documentation = "https://docs.rs/conniecs"
 license = "MIT"
 name = "conniecs"
 repository = "https://github.com/Connicpu/conniecs"
-version = "0.1.2"
+version = "0.1.3"
 description = """
 A simple ECS system based off of the `ecs` crate, but with some minor API
 adjustments and derive macros for implementing most of the boilerplate.
