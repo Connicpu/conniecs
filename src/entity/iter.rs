@@ -116,15 +116,11 @@ where
                     } else {
                         return None;
                     }
-                    print!("{:?}", iter.current_range);
-                } else {
-                    print!("{:?}", iter.current_range);
                 }
 
                 let index = iter.current_range.min;
                 let data = EntityData(&iter.entities[&index]);
                 iter.current_range = iter.current_range.pop_front();
-                println!(" => {:?}", iter.current_range);
                 Some(data)
             }
         }
