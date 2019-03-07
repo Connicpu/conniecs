@@ -5,11 +5,11 @@ use std::collections::hash_map::HashMap;
 use std::marker::PhantomData;
 use std::mem;
 
-use component::ComponentManager;
-use entity::{BuildData, Entity, EntityBuilder, EntityData, Id, IndexedEntity};
-use entity::iter::{EntityIter, IndexedEntityIter};
-use services::ServiceManager;
-use system::SystemManager;
+use crate::component::ComponentManager;
+use crate::entity::iter::{EntityIter, IndexedEntityIter};
+use crate::entity::{BuildData, Entity, EntityBuilder, EntityData, Id, IndexedEntity};
+use crate::services::ServiceManager;
+use crate::system::SystemManager;
 
 enum Event {
     BuildEntity(Entity),

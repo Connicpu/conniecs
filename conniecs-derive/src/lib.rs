@@ -1,9 +1,14 @@
-extern crate proc_macro;
-extern crate syn;
 #[macro_use]
 extern crate quote;
+#[macro_use]
+extern crate syn;
+
+extern crate proc_macro;
+extern crate proc_macro2;
 
 use proc_macro::TokenStream;
+use quote::TokenStreamExt;
+use syn::DeriveInput;
 
 mod aspect;
 mod components;
@@ -13,116 +18,114 @@ mod systems;
 
 #[proc_macro_derive(Aspect, attributes(aspect, components))]
 pub fn derive_aspect(input: TokenStream) -> TokenStream {
-    // Construct a string representation of the type definition
-    let s = input.to_string();
-
     // Parse the string representation
-    let ast = syn::parse_derive_input(&s).unwrap();
+    let ast = parse_macro_input!(input as DeriveInput);
 
     // Build the impl
-    let gen = aspect::impl_aspect(ast);
-
-    // Return the generated impl
-    let result = gen.parse().unwrap();
+    let result = aspect::impl_aspect(ast);
 
     //panic!("{}", result);
 
-    result
+    result.into()
 }
 
 #[proc_macro_derive(ComponentManager, attributes(hot, cold))]
 pub fn derive_components(input: TokenStream) -> TokenStream {
-    // Construct a string representation of the type definition
-    let s = input.to_string();
-
     // Parse the string representation
-    let ast = syn::parse_derive_input(&s).unwrap();
+    let ast = parse_macro_input!(input as DeriveInput);
 
     // Build the impl
-    let gen = components::impl_components(ast);
+    let result = components::impl_components(ast);
 
     // Return the generated impl
-    gen.parse().unwrap()
+    result.into()
 }
 
 #[proc_macro_derive(ServiceManager)]
 pub fn derive_services(input: TokenStream) -> TokenStream {
-    // Construct a string representation of the type definition
-    let s = input.to_string();
-
     // Parse the string representation
-    let ast = syn::parse_derive_input(&s).unwrap();
+    let ast = parse_macro_input!(input as DeriveInput);
 
     // Build the impl
-    let gen = services::impl_services(ast);
+    let result = services::impl_services(ast);
 
     // Return the generated impl
-    gen.parse().unwrap()
+    result.into()
 }
 
-#[proc_macro_derive(System,
-                    attributes(data, system_type, process, aspect, aspect_a, aspect_b,
-                                 interval, timed_interval, activated, reactivated, deactivated))]
+#[proc_macro_derive(
+    System,
+    attributes(
+        data,
+        system_type,
+        process,
+        aspect,
+        aspect_a,
+        aspect_b,
+        interval,
+        timed_interval,
+        activated,
+        reactivated,
+        deactivated
+    )
+)]
 pub fn derive_system(input: TokenStream) -> TokenStream {
-    // Construct a string representation of the type definition
-    let s = input.to_string();
-
     // Parse the string representation
-    let ast = syn::parse_derive_input(&s).unwrap();
+    let ast = parse_macro_input!(input as DeriveInput);
 
     // Build the impl
-    let gen = system::impl_system(ast);
+    let result = system::impl_system(ast);
 
     // Return the generated impl
-    gen.parse().unwrap()
+    result.into()
 }
 
 #[proc_macro_derive(SystemManager, attributes(data, passive))]
 pub fn derive_systems(input: TokenStream) -> TokenStream {
-    // Construct a string representation of the type definition
-    let s = input.to_string();
-
     // Parse the string representation
-    let ast = syn::parse_derive_input(&s).unwrap();
+    let ast = parse_macro_input!(input as DeriveInput);
 
     // Build the impl
-    let gen = systems::impl_systems(ast);
+    let result = systems::impl_systems(ast);
 
     // Return the generated impl
-    gen.parse().unwrap()
+    result.into()
 }
 
 fn improper_attr_format(attr: &str, module: &str) -> ! {
     panic!(
         "{} was not in the correct format. Please refer to the {} \
          module documentation for more information.",
-        attr,
-        module
+        attr, module
     )
 }
 
-fn read_path_item<F>(attr: &syn::MetaItem, fail: F) -> String
+fn read_path_item<F>(attr: &syn::Meta, fail: F) -> String
 where
     F: FnOnce(),
 {
     match attr {
-        &syn::MetaItem::Word(ref word) => word.to_string(),
-        &syn::MetaItem::List(_, ref items) => {
+        syn::Meta::Word(word) => word.to_string(),
+        syn::Meta::List(list) => {
+            let items = &list.nested;
             if items.len() != 1 {
                 fail();
                 unreachable!();
             }
 
             match items[0] {
-                syn::NestedMetaItem::Literal(syn::Lit::Str(ref value, _)) => value.clone(),
-                syn::NestedMetaItem::MetaItem(syn::MetaItem::Word(ref word)) => word.to_string(),
+                syn::NestedMeta::Literal(syn::Lit::Str(ref value)) => value.value(),
+                syn::NestedMeta::Meta(syn::Meta::Word(ref word)) => word.to_string(),
                 _ => {
                     fail();
                     unreachable!();
                 }
             }
         }
-        &syn::MetaItem::NameValue(_, syn::Lit::Str(ref value, _)) => value.clone(),
+        syn::Meta::NameValue(syn::MetaNameValue {
+            lit: syn::Lit::Str(ref value),
+            ..
+        }) => value.value(),
         _ => {
             fail();
             unreachable!();
@@ -130,13 +133,19 @@ where
     }
 }
 
-fn quote_path(path: &str) -> quote::Tokens {
-    let mut tokens = quote::Tokens::new();
+fn quote_path(path: &str) -> proc_macro2::TokenStream {
+    let mut tokens = proc_macro2::TokenStream::new();
     for (i, part) in path.split("::").enumerate() {
+        use proc_macro2::{Ident, Punct, Spacing, Span};
         if i != 0 {
-            tokens.append("::");
+            tokens.append_all(&[
+                Punct::new(':', Spacing::Joint),
+                Punct::new(':', Spacing::Joint),
+            ]);
         }
-        tokens.append(part);
+        if part.len() > 0 {
+            tokens.append(Ident::new(part, Span::call_site()));
+        }
     }
     tokens
 }

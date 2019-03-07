@@ -1,8 +1,13 @@
-use syn::{self, MetaItem, NestedMetaItem, Ident, Lit};
-use quote;
-use {read_path_item, quote_path, improper_attr_format};
+use crate::{improper_attr_format, quote_path, read_path_item};
 
-pub fn quote_aspect(ty: &Ident, cty: &quote::Tokens, all_filters: &[&Ident], none_filters: &[&Ident]) -> quote::Tokens {
+use syn::{Ident, Lit, Meta, MetaNameValue, NestedMeta};
+
+pub fn quote_aspect(
+    ty: &Ident,
+    cty: &proc_macro2::TokenStream,
+    all_filters: &[Ident],
+    none_filters: &[Ident],
+) -> proc_macro2::TokenStream {
     quote! {
         impl ::conniecs::aspect::AspectFilter<#cty> for #ty {
             fn check<'a>(&self, entity: ::conniecs::EntityData<'a, #cty >, components: & #cty ) -> bool {
@@ -22,24 +27,22 @@ pub fn quote_aspect(ty: &Ident, cty: &quote::Tokens, all_filters: &[&Ident], non
     }
 }
 
-pub fn impl_aspect(ast: syn::DeriveInput) -> quote::Tokens {
+pub fn impl_aspect(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let ty = &ast.ident;
     let mut all_filters = vec![];
     let mut none_filters = vec![];
     let mut components_ty = None;
 
     for attr in &ast.attrs {
-        if attr.is_sugared_doc {
-            continue;
-        }
+        let meta = attr.parse_meta().unwrap();
 
-        match (attr.value.name(), &attr.value) {
+        match (attr.path.segments[0].ident.to_string().as_str(), &meta) {
             ("components", meta) => {
                 let word = read_path_item(meta, || improper_comp_format());
                 components_ty = Some(word);
             }
-            ("aspect", &MetaItem::List(_, ref items)) => {
-                read_aspect(items, &mut all_filters, &mut none_filters);
+            ("aspect", Meta::List(list)) => {
+                read_aspect(list.nested.iter(), &mut all_filters, &mut none_filters);
             }
             _ => continue,
         }
@@ -47,67 +50,76 @@ pub fn impl_aspect(ast: syn::DeriveInput) -> quote::Tokens {
 
     let cty = match components_ty {
         Some(ty) => quote_path(&ty),
-        None => quote_path("::Components"),
+        None => quote_path("crate::Components"),
     };
 
     quote_aspect(ty, &cty, &all_filters, &none_filters)
 }
 
-pub fn read_aspect_meta<'a>(attr: &'a MetaItem, all: &mut Vec<&'a Ident>, none: &mut Vec<&'a Ident>) -> Option<quote::Tokens> {
+pub fn read_aspect_meta<'a>(
+    attr: &'a Meta,
+    all: &mut Vec<Ident>,
+    none: &mut Vec<Ident>,
+) -> Option<proc_macro2::TokenStream> {
     match attr {
-        &MetaItem::List(_, ref items) => {
-            read_aspect(items, all, none);
+        Meta::List(list) => {
+            read_aspect(list.nested.iter(), all, none);
             None
         }
-        &MetaItem::NameValue(_, Lit::Str(ref path, _)) => {
-            Some(quote_path(path))
-        }
+        Meta::NameValue(MetaNameValue {
+            lit: Lit::Str(path),
+            ..
+        }) => Some(quote_path(&path.value())),
         _ => improper_format(),
     }
 }
 
-pub fn read_aspect<'a>(items: &'a [NestedMetaItem], all: &mut Vec<&'a Ident>, none: &mut Vec<&'a Ident>) {
+pub fn read_aspect<'a>(
+    items: impl IntoIterator<Item = &'a NestedMeta>,
+    all: &mut Vec<Ident>,
+    none: &mut Vec<Ident>,
+) {
     for item in items {
         let item = unwrap_meta(item);
         let items = unwrap_list(item);
-        match item.name() {
+        match item.name().to_string().as_str() {
             "all" => {
                 for item in items {
                     let item = unwrap_meta(item);
                     let component = unwrap_word(item);
-                    all.push(component);
+                    all.push(component.clone());
                 }
             }
             "none" => {
                 for item in items {
                     let item = unwrap_meta(item);
                     let component = unwrap_word(item);
-                    none.push(component);
+                    none.push(component.clone());
                 }
-            },
+            }
             _ => improper_format(),
         }
     }
 }
 
-fn unwrap_list(item: &MetaItem) -> &[NestedMetaItem] {
+fn unwrap_list<'a>(item: &'a Meta) -> impl Iterator<Item = &'a NestedMeta> {
     match item {
-        &MetaItem::List(_, ref items) => items,
+        Meta::List(list) => list.nested.iter(),
         _ => improper_format(),
     }
 }
 
-fn unwrap_word(item: &MetaItem) -> &Ident {
+fn unwrap_word(item: &Meta) -> &Ident {
     match item {
-        &MetaItem::Word(ref ident) => ident,
+        Meta::Word(ident) => ident,
         _ => improper_format(),
     }
 }
 
-fn unwrap_meta(item: &NestedMetaItem) -> &MetaItem {
+fn unwrap_meta(item: &NestedMeta) -> &Meta {
     match item {
-        &NestedMetaItem::MetaItem(ref item) => item,
-        &NestedMetaItem::Literal(_) => improper_format(),
+        NestedMeta::Meta(item) => item,
+        NestedMeta::Literal(_) => improper_format(),
     }
 }
 

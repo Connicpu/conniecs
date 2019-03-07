@@ -1,6 +1,6 @@
-use component::ComponentManager;
-use entity::{BuildData, ModifyData};
-use services::ServiceManager;
+use crate::component::ComponentManager;
+use crate::entity::{BuildData, ModifyData};
+use crate::services::ServiceManager;
 
 pub trait EntityBuilder<C, M>
 where

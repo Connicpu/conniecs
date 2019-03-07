@@ -1,7 +1,7 @@
 use syn;
 use quote;
 
-pub fn impl_services(ast: syn::DeriveInput) -> quote::Tokens {
+pub fn impl_services(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = ast.ident;
 
     quote!{

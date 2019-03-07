@@ -1,7 +1,8 @@
-use syn::{self, MetaItem, NestedMetaItem, Lit, Ident, Attribute};
-use quote;
-use {read_path_item, improper_attr_format, quote_path};
-use aspect::{read_aspect_meta, quote_aspect};
+use crate::aspect::{quote_aspect, read_aspect_meta};
+use crate::{improper_attr_format, quote_path, read_path_item};
+
+use proc_macro2::Span;
+use syn::{self, Attribute, Ident, Lit, Meta, MetaNameValue, NestedMeta};
 
 enum SystemType {
     Basic,
@@ -11,12 +12,13 @@ enum SystemType {
     Interact,
 }
 
-pub fn impl_system(ast: syn::DeriveInput) -> quote::Tokens {
+pub fn impl_system(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let mut kind = SystemType::Basic;
 
     for attr in &ast.attrs {
-        match attr.name() {
-            "system_type" => kind = read_systy(&attr.value),
+        let meta = attr.parse_meta().unwrap();
+        match meta.name().to_string().as_str() {
+            "system_type" => kind = read_systy(&meta),
             _ => (),
         }
     }
@@ -30,24 +32,25 @@ pub fn impl_system(ast: syn::DeriveInput) -> quote::Tokens {
     }
 }
 
-fn impl_basic_system(ast: &syn::DeriveInput) -> quote::Tokens {
+fn impl_basic_system(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = &ast.ident;
     let mut cs_data = None;
     let mut init_func = None;
     let mut process_func = None;
 
     for attr in &ast.attrs {
-        match attr.name() {
-            "data" => cs_data = Some(read_data(&attr.value)),
-            "init" => init_func = Some(read_path_item(&attr.value, || improper_init_fmt())),
-            "process" => process_func = Some(read_path_item(&attr.value, || improper_process_fmt())),
+        let meta = attr.parse_meta().unwrap();
+        match meta.name().to_string().as_str() {
+            "data" => cs_data = Some(read_data(&meta)),
+            "init" => init_func = Some(read_path_item(&meta, || improper_init_fmt())),
+            "process" => process_func = Some(read_path_item(&meta, || improper_process_fmt())),
             _ => (),
         }
     }
 
     let (components, services) = match cs_data {
         Some((c, s)) => (c, s),
-        None => (quote_path("::Components"), quote_path("::Services")),
+        None => (quote_path("crate::Components"), quote_path("crate::Services")),
     };
 
     let init = if let Some(init_func) = init_func {
@@ -66,7 +69,7 @@ fn impl_basic_system(ast: &syn::DeriveInput) -> quote::Tokens {
             }
         }
     } else {
-        quote!{}
+        quote! {}
     };
 
     let activations = read_activations(&ast.attrs);
@@ -82,12 +85,12 @@ fn impl_basic_system(ast: &syn::DeriveInput) -> quote::Tokens {
 
             #activations
         }
-        
+
         #process
     }
 }
 
-fn impl_entity_system(ast: &syn::DeriveInput) -> quote::Tokens {
+fn impl_entity_system(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = &ast.ident;
     let mut cs_data = None;
     let mut init_func = None;
@@ -95,22 +98,23 @@ fn impl_entity_system(ast: &syn::DeriveInput) -> quote::Tokens {
     let mut aspect_all = vec![];
     let mut aspect_none = vec![];
 
-    let aspect_id = Ident::new(format!("{}EntityAspect", name));
+    let aspect_id = Ident::new(&format!("{}EntityAspect", name), Span::call_site());
     let mut aspect_path = None;
 
     for attr in &ast.attrs {
-        match attr.name() {
-            "data" => cs_data = Some(read_data(&attr.value)),
-            "init" => init_func = Some(read_path_item(&attr.value, || improper_init_fmt())),
-            "process" => process_func = Some(read_path_item(&attr.value, || improper_process_fmt())),
-            "aspect" => aspect_path = read_aspect_meta(&attr.value, &mut aspect_all, &mut aspect_none),
+        let meta = attr.parse_meta().unwrap();
+        match meta.name().to_string().as_str() {
+            "data" => cs_data = Some(read_data(&meta)),
+            "init" => init_func = Some(read_path_item(&meta, || improper_init_fmt())),
+            "process" => process_func = Some(read_path_item(&meta, || improper_process_fmt())),
+            "aspect" => aspect_path = read_aspect_meta(&meta, &mut aspect_all, &mut aspect_none),
             _ => (),
         }
     }
 
     let (components, services) = match cs_data {
         Some((c, s)) => (c, s),
-        None => (quote_path("::Components"), quote_path("::Services")),
+        None => (quote_path("crate::Components"), quote_path("crate::Services")),
     };
 
     let init = if let Some(init_func) = init_func {
@@ -132,11 +136,11 @@ fn impl_entity_system(ast: &syn::DeriveInput) -> quote::Tokens {
             }
         }
     } else {
-        quote!{}
+        quote! {}
     };
 
     let (aspect, aspect_id) = if let Some(aspect_path) = aspect_path {
-        (quote!{}, aspect_path)
+        (quote! {}, aspect_path)
     } else {
         let aspect = quote_aspect(&aspect_id, &components, &aspect_all, &aspect_none);
         let aspect = quote! { #[derive(Copy, Clone, Debug)] pub struct #aspect_id; #aspect };
@@ -164,29 +168,30 @@ fn impl_entity_system(ast: &syn::DeriveInput) -> quote::Tokens {
 
             #activations
         }
-        
+
         #process
         #aspect
         #filterdef
     }
 }
 
-fn impl_lazy_system(ast: &syn::DeriveInput) -> quote::Tokens {
+fn impl_lazy_system(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = &ast.ident;
     let mut cs_data = None;
     let mut process_func = None;
 
     for attr in &ast.attrs {
-        match attr.name() {
-            "data" => cs_data = Some(read_data(&attr.value)),
-            "process" => process_func = Some(read_path_item(&attr.value, || improper_process_fmt())),
+        let meta = attr.parse_meta().unwrap();
+        match meta.name().to_string().as_str() {
+            "data" => cs_data = Some(read_data(&meta)),
+            "process" => process_func = Some(read_path_item(&meta, || improper_process_fmt())),
             _ => (),
         }
     }
 
     let (components, services) = match cs_data {
         Some((c, s)) => (c, s),
-        None => (quote_path("::Components"), quote_path("::Services")),
+        None => (quote_path("crate::Components"), quote_path("crate::Services")),
     };
 
     let process = if let Some(proc_func) = process_func {
@@ -199,7 +204,7 @@ fn impl_lazy_system(ast: &syn::DeriveInput) -> quote::Tokens {
             }
         }
     } else {
-        quote!{}
+        quote! {}
     };
 
     let activations = read_activations(&ast.attrs);
@@ -215,12 +220,12 @@ fn impl_lazy_system(ast: &syn::DeriveInput) -> quote::Tokens {
 
             #activations
         }
-        
+
         #process
     }
 }
 
-fn impl_interval_system(ast: &syn::DeriveInput) -> quote::Tokens {
+fn impl_interval_system(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = &ast.ident;
     let mut cs_data = None;
     let mut init_func = None;
@@ -228,18 +233,19 @@ fn impl_interval_system(ast: &syn::DeriveInput) -> quote::Tokens {
     let mut interval = None;
 
     for attr in &ast.attrs {
-        match attr.name() {
-            "data" => cs_data = Some(read_data(&attr.value)),
-            "init" => init_func = Some(read_path_item(&attr.value, || improper_init_fmt())),
-            "process" => process_func = Some(read_path_item(&attr.value, || improper_process_fmt())),
-            "interval" => interval = Some(parse_interval(&attr.value)),
+        let meta = attr.parse_meta().unwrap();
+        match meta.name().to_string().as_str() {
+            "data" => cs_data = Some(read_data(&meta)),
+            "init" => init_func = Some(read_path_item(&meta, || improper_init_fmt())),
+            "process" => process_func = Some(read_path_item(&meta, || improper_process_fmt())),
+            "interval" => interval = Some(parse_interval(&meta)),
             _ => (),
         }
     }
 
     let (components, services) = match cs_data {
         Some((c, s)) => (c, s),
-        None => (quote_path("::Components"), quote_path("::Services")),
+        None => (quote_path("crate::Components"), quote_path("crate::Services")),
     };
 
     let init = if let Some(init_func) = init_func {
@@ -258,7 +264,7 @@ fn impl_interval_system(ast: &syn::DeriveInput) -> quote::Tokens {
             }
         }
     } else {
-        quote!{}
+        quote! {}
     };
 
     let iv = interval.unwrap_or_else(|| panic!("#[interval = ...] attribute must be specified"));
@@ -284,17 +290,20 @@ fn impl_interval_system(ast: &syn::DeriveInput) -> quote::Tokens {
 
             #activations
         }
-        
+
         #process
         #create_interval
     }
 }
 
-fn parse_interval(attr: &MetaItem) -> quote::Tokens {
+fn parse_interval(attr: &Meta) -> proc_macro2::TokenStream {
     match attr {
-        &MetaItem::NameValue(_, Lit::Str(ref time, _)) => parse_iv_time(time),
-        &MetaItem::NameValue(_, Lit::Int(time, _)) => frame_iv(time),
-        &MetaItem::List(_, ref items) => parse_explicit_iv(items),
+        Meta::NameValue(mnv) => match &mnv.lit {
+            Lit::Str(time) => parse_iv_time(&time.value()),
+            Lit::Int(time) => frame_iv(time.value()),
+            _ => improper_interval_fmt(),
+        },
+        Meta::List(list) => parse_explicit_iv(list.nested.iter()),
         _ => improper_interval_fmt(),
     }
 }
@@ -303,7 +312,7 @@ fn parse_u64(time: &str) -> u64 {
     time.parse().map_err(|_| improper_interval_fmt()).unwrap()
 }
 
-fn parse_iv_time(time: &str) -> quote::Tokens {
+fn parse_iv_time(time: &str) -> proc_macro2::TokenStream {
     let len = time.len();
 
     let ns = if time.ends_with("ms") && len > 2 {
@@ -326,19 +335,24 @@ fn parse_iv_time(time: &str) -> quote::Tokens {
     frame_ns(ns)
 }
 
-fn parse_explicit_iv(items: &[NestedMetaItem]) -> quote::Tokens {
-    if items.len() != 1 { improper_interval_fmt(); }
+fn parse_explicit_iv<'a>(
+    mut items: impl Iterator<Item = &'a NestedMeta>,
+) -> proc_macro2::TokenStream {
+    let item = items.next();
+    if item.is_none() || items.next().is_some() {
+        improper_interval_fmt();
+    }
 
-    match items[0] {
-        NestedMetaItem::Literal(Lit::Str(ref time, _)) => parse_iv_time(time),
-        NestedMetaItem::Literal(Lit::Int(time, _)) => frame_iv(time),
-        NestedMetaItem::MetaItem(MetaItem::NameValue(ref kind, ref lit)) => {
-            let iv = match lit {
-                &Lit::Str(ref time, _) => parse_u64(time),
-                &Lit::Int(iv, _) => iv,
+    match item.unwrap() {
+        NestedMeta::Literal(Lit::Str(time)) => parse_iv_time(&time.value()),
+        NestedMeta::Literal(Lit::Int(time)) => frame_iv(time.value()),
+        NestedMeta::Meta(Meta::NameValue(mnv)) => {
+            let iv = match &mnv.lit {
+                Lit::Str(time) => parse_u64(&time.value()),
+                Lit::Int(iv) => iv.value(),
                 _ => improper_interval_fmt(),
             };
-            let ns = match kind.as_ref() {
+            let ns = match mnv.ident.to_string().as_str() {
                 "ticks" => return frame_iv(iv),
 
                 "s" => iv * 1_000_000_000,
@@ -355,7 +369,7 @@ fn parse_explicit_iv(items: &[NestedMetaItem]) -> quote::Tokens {
     }
 }
 
-fn frame_iv(iv: u64) -> quote::Tokens {
+fn frame_iv(iv: u64) -> proc_macro2::TokenStream {
     quote! {
         ::conniecs::system::interval::TickerState::Frames {
             interval: #iv,
@@ -364,7 +378,7 @@ fn frame_iv(iv: u64) -> quote::Tokens {
     }
 }
 
-fn frame_ns(ns: u64) -> quote::Tokens {
+fn frame_ns(ns: u64) -> proc_macro2::TokenStream {
     quote! {
         ::conniecs::system::interval::TickerState::Timed {
             interval: #ns,
@@ -373,7 +387,7 @@ fn frame_ns(ns: u64) -> quote::Tokens {
     }
 }
 
-fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
+fn impl_interact_system(ast: &syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = &ast.ident;
     let mut cs_data = None;
     let mut init_func = None;
@@ -383,25 +397,30 @@ fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
     let mut aspect_all_b = vec![];
     let mut aspect_none_b = vec![];
 
-    let aspect_id_a = Ident::new(format!("{}EntityAspectA", name));
+    let aspect_id_a = Ident::new(&format!("{}EntityAspectA", name), Span::call_site());
     let mut aspect_path_a = None;
-    let aspect_id_b = Ident::new(format!("{}EntityAspectB", name));
+    let aspect_id_b = Ident::new(&format!("{}EntityAspectB", name), Span::call_site());
     let mut aspect_path_b = None;
 
     for attr in &ast.attrs {
-        match attr.name() {
-            "data" => cs_data = Some(read_data(&attr.value)),
-            "init" => init_func = Some(read_path_item(&attr.value, || improper_init_fmt())),
-            "process" => process_func = Some(read_path_item(&attr.value, || improper_process_fmt())),
-            "aspect_a" => aspect_path_a = read_aspect_meta(&attr.value, &mut aspect_all_a, &mut aspect_none_a),
-            "aspect_b" => aspect_path_b = read_aspect_meta(&attr.value, &mut aspect_all_b, &mut aspect_none_b),
+        let meta = attr.parse_meta().unwrap();
+        match meta.name().to_string().as_str() {
+            "data" => cs_data = Some(read_data(&meta)),
+            "init" => init_func = Some(read_path_item(&meta, || improper_init_fmt())),
+            "process" => process_func = Some(read_path_item(&meta, || improper_process_fmt())),
+            "aspect_a" => {
+                aspect_path_a = read_aspect_meta(&meta, &mut aspect_all_a, &mut aspect_none_a)
+            }
+            "aspect_b" => {
+                aspect_path_b = read_aspect_meta(&meta, &mut aspect_all_b, &mut aspect_none_b)
+            }
             _ => (),
         }
     }
 
     let (components, services) = match cs_data {
         Some((c, s)) => (c, s),
-        None => (quote_path("::Components"), quote_path("::Services")),
+        None => (quote_path("crate::Components"), quote_path("crate::Services")),
     };
 
     let init = if let Some(init_func) = init_func {
@@ -423,11 +442,11 @@ fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
             }
         }
     } else {
-        quote!{}
+        quote! {}
     };
 
     let (aspect_a, aspect_id_a) = if let Some(aspect_path_a) = aspect_path_a {
-        (quote!{}, aspect_path_a)
+        (quote! {}, aspect_path_a)
     } else {
         let aspect_a = quote_aspect(&aspect_id_a, &components, &aspect_all_a, &aspect_none_a);
         let aspect_a = quote! { #[derive(Copy, Clone, Debug)] pub struct #aspect_id_a; #aspect_a };
@@ -435,7 +454,7 @@ fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
     };
 
     let (aspect_b, aspect_id_b) = if let Some(aspect_path_b) = aspect_path_b {
-        (quote!{}, aspect_path_b)
+        (quote! {}, aspect_path_b)
     } else {
         let aspect_b = quote_aspect(&aspect_id_b, &components, &aspect_all_b, &aspect_none_b);
         let aspect_b = quote! { #[derive(Copy, Clone, Debug)] pub struct #aspect_id_b; #aspect_b };
@@ -466,7 +485,7 @@ fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
 
             #activations
         }
-        
+
         #process
         #aspect_a
         #aspect_b
@@ -474,23 +493,37 @@ fn impl_interact_system(ast: &syn::DeriveInput) -> quote::Tokens {
     }
 }
 
-fn read_activations(attrs: &[Attribute]) -> quote::Tokens {
+fn read_activations(attrs: &[Attribute]) -> proc_macro2::TokenStream {
     let mut activated = None;
     let mut reactivated = None;
     let mut deactivated = None;
 
     for attr in attrs {
-        match attr.name() {
-            "activated" => activated = Some(read_path_item(&attr.value, || improper_activated_fmt())),
-            "reactivated" => reactivated = Some(read_path_item(&attr.value, || improper_reactivated_fmt())),
-            "deactivated" => deactivated = Some(read_path_item(&attr.value, || improper_deactivated_fmt())),
+        let meta = attr.parse_meta().unwrap();
+        match meta.name().to_string().as_str() {
+            "activated" => activated = Some(read_path_item(&meta, || improper_activated_fmt())),
+            "reactivated" => {
+                reactivated = Some(read_path_item(&meta, || improper_reactivated_fmt()))
+            }
+            "deactivated" => {
+                deactivated = Some(read_path_item(&meta, || improper_deactivated_fmt()))
+            }
             _ => (),
         }
     }
 
-    let activated = activation_fn("activated".into(), activated.map(|s| quote_path(&s)));
-    let reactivated = activation_fn("reactivated".into(), reactivated.map(|s| quote_path(&s)));
-    let deactivated = activation_fn("deactivated".into(), deactivated.map(|s| quote_path(&s)));
+    let activated = activation_fn(
+        Ident::new("activated", Span::call_site()),
+        activated.map(|s| quote_path(&s)),
+    );
+    let reactivated = activation_fn(
+        Ident::new("reactivated", Span::call_site()),
+        reactivated.map(|s| quote_path(&s)),
+    );
+    let deactivated = activation_fn(
+        Ident::new("deactivated", Span::call_site()),
+        deactivated.map(|s| quote_path(&s)),
+    );
 
     quote! {
         #activated
@@ -499,7 +532,7 @@ fn read_activations(attrs: &[Attribute]) -> quote::Tokens {
     }
 }
 
-fn activation_fn(name: Ident, item: Option<quote::Tokens>) -> quote::Tokens {
+fn activation_fn(name: Ident, item: Option<proc_macro2::TokenStream>) -> proc_macro2::TokenStream {
     if let Some(item) = item {
         quote! {
             fn #name (
@@ -512,45 +545,56 @@ fn activation_fn(name: Ident, item: Option<quote::Tokens>) -> quote::Tokens {
             }
         }
     } else {
-        quote!{}
+        quote! {}
     }
 }
 
-fn read_systy(attr: &MetaItem) -> SystemType {
+fn read_systy(attr: &Meta) -> SystemType {
     let systy = read_path_item(attr, || improper_systy_fmt());
     match &systy[..] {
-        "Basic"    | "basic"    => SystemType::Basic,
-        "Entity"   | "entity"   => SystemType::Entity,
-        "Lazy"     | "lazy"     => SystemType::Lazy,
+        "Basic" | "basic" => SystemType::Basic,
+        "Entity" | "entity" => SystemType::Entity,
+        "Lazy" | "lazy" => SystemType::Lazy,
         "Interval" | "interval" => SystemType::Interval,
         "Interact" | "interact" => SystemType::Interact,
         _ => improper_systy_fmt(),
     }
 }
 
-pub fn read_data(item: &MetaItem) -> (quote::Tokens, quote::Tokens) {
+pub fn read_data(item: &Meta) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
     match item {
-        &MetaItem::List(_, ref items) => read_data_items(items),
+        Meta::List(items) => read_data_items(items.nested.iter()),
         _ => improper_data_fmt(),
     }
 }
 
-pub fn read_data_items(items: &[NestedMetaItem]) -> (quote::Tokens, quote::Tokens) {
-    if items.len() != 2 {
-        improper_data_fmt();
-    }
-
-    let comps = match items[0] {
-        NestedMetaItem::Literal(Lit::Str(ref path, _)) => path.clone(),
-        NestedMetaItem::MetaItem(MetaItem::Word(ref word)) => word.to_string(),
-        NestedMetaItem::MetaItem(MetaItem::NameValue(ref comps, Lit::Str(ref path, _))) if comps == "components" => path.clone(),
+pub fn read_data_items<'a>(
+    mut items: impl Iterator<Item = &'a NestedMeta>,
+) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+    let (item0, item1) = match (items.next(), items.next(), items.next()) {
+        (Some(item0), Some(item1), None) => (item0, item1),
         _ => improper_data_fmt(),
     };
 
-    let servs = match items[1] {
-        NestedMetaItem::Literal(Lit::Str(ref path, _)) => path.clone(),
-        NestedMetaItem::MetaItem(MetaItem::Word(ref word)) => word.to_string(),
-        NestedMetaItem::MetaItem(MetaItem::NameValue(ref comps, Lit::Str(ref path, _))) if comps == "services" => path.clone(),
+    let comps = match item0 {
+        NestedMeta::Literal(Lit::Str(path)) => path.value(),
+        NestedMeta::Meta(Meta::Word(word)) => word.to_string(),
+        NestedMeta::Meta(Meta::NameValue(MetaNameValue {
+            ident,
+            lit: Lit::Str(path),
+            ..
+        })) if ident == "components" => path.value(),
+        _ => improper_data_fmt(),
+    };
+
+    let servs = match item1 {
+        NestedMeta::Literal(Lit::Str(path)) => path.value(),
+        NestedMeta::Meta(Meta::Word(word)) => word.to_string(),
+        NestedMeta::Meta(Meta::NameValue(MetaNameValue {
+            ident,
+            lit: Lit::Str(path),
+            ..
+        })) if ident == "services" => path.value(),
         _ => improper_data_fmt(),
     };
 

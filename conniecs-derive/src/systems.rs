@@ -1,28 +1,34 @@
-use syn::{self, Attribute, Body, VariantData};
+use syn::{self, Attribute, Data, Fields};
 use quote;
 
-use system::read_data;
-use quote_path;
+use crate::system::read_data;
+use crate::quote_path;
 
-pub fn impl_systems(ast: syn::DeriveInput) -> quote::Tokens {
+pub fn impl_systems(ast: syn::DeriveInput) -> proc_macro2::TokenStream {
     let name = &ast.ident;
     let mut cs_data = None;
 
     for attr in &ast.attrs {
-        match attr.name() {
-            "data" => cs_data = Some(read_data(&attr.value)),
+        let meta = attr.parse_meta().unwrap();
+        match meta.name().to_string().as_str() {
+            "data" => cs_data = Some(read_data(&meta)),
             _ => (),
         }
     }
 
-    let fields = match ast.body {
-        Body::Struct(VariantData::Struct(fields)) => Some(fields),
-        Body::Struct(VariantData::Unit) => None,
-        Body::Struct(VariantData::Tuple(_)) => {
-            panic!("Components may not be represented by a tuple struct.")
+    let fields = match &ast.data {
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => Some(&fields.named),
+            Fields::Unit => None,
+            Fields::Unnamed(_) => {
+                panic!("Components may not be represented by a tuple struct.")
+            }
         }
-        Body::Enum(_) => {
+        Data::Enum(_) => {
             panic!("Components may not be represented by an enum. Structs only.");
+        }
+        Data::Union(_) => {
+            panic!("Components may not be represented by a union. Structs only.");
         }
     };
 
@@ -43,8 +49,8 @@ pub fn impl_systems(ast: syn::DeriveInput) -> quote::Tokens {
         quote! { #name }
     };
 
-    let empty = vec![];
-    let fields = fields.as_ref().unwrap_or(&empty);
+    let empty = syn::punctuated::Punctuated::new();
+    let fields = fields.unwrap_or(&empty);
 
     let active_systems = fields
         .iter()
@@ -60,7 +66,7 @@ pub fn impl_systems(ast: syn::DeriveInput) -> quote::Tokens {
 
     let (components, services) = match cs_data {
         Some((c, s)) => (c, s),
-        None => (quote_path("::Components"), quote_path("::Services")),
+        None => (quote_path("crate::Components"), quote_path("crate::Services")),
     };
 
     let activated = quote! {
@@ -136,7 +142,8 @@ pub fn impl_systems(ast: syn::DeriveInput) -> quote::Tokens {
 
 fn is_passive(attrs: &[Attribute]) -> bool {
     for attr in attrs {
-        if attr.name() == "passive" {
+        let meta = attr.parse_meta().unwrap();
+        if meta.name() == "passive" {
             return true;
         }
     }

@@ -2,11 +2,11 @@
 
 use std::ops::{Deref, DerefMut};
 
-use aspect::Aspect;
-use entity::{EntityData, EntityIter};
-use system::{Process, System};
-use system::watcher::Watcher;
-use world::DataHelper;
+use crate::aspect::Aspect;
+use crate::entity::{EntityData, EntityIter};
+use crate::system::watcher::Watcher;
+use crate::system::{Process, System};
+use crate::world::DataHelper;
 
 pub trait EntityProcess: FilteredEntitySystem {
     fn process<'a>(

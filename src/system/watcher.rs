@@ -1,15 +1,15 @@
 //! TODO: Add documentation including describing how the derive macros work
 
-use free_ranges::{FreeRanges, Range};
 use fnv::FnvHashMap;
+use free_ranges::{FreeRanges, Range};
 
 use std::fmt;
 
-use aspect::Aspect;
-use component::ComponentManager;
-use entity::{EntityData, EntityIter, IndexedEntity, WatchedEntityIter};
-use services::ServiceManager;
-use system::System;
+use crate::aspect::Aspect;
+use crate::component::ComponentManager;
+use crate::entity::{EntityData, EntityIter, IndexedEntity, WatchedEntityIter};
+use crate::services::ServiceManager;
+use crate::system::System;
 
 pub struct Watcher<C>
 where
@@ -58,7 +58,8 @@ where
         T: System<Components = C, Services = M>,
     {
         if self.aspect.check(entity, components) {
-            if self.interested
+            if self
+                .interested
                 .insert(entity.index(), entity.__clone())
                 .is_none()
             {

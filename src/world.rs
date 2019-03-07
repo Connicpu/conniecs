@@ -1,10 +1,12 @@
 //! TODO: Add documentation including describing how the derive macros work
 
-use component::ComponentManager;
-use entity::{BuildData, Entity, EntityBuilder, EntityData, EntityIter, EntityManager,
-             EntityModifier, ModifyData};
-use services::ServiceManager;
-use system::SystemManager;
+use crate::component::ComponentManager;
+use crate::entity::{
+    BuildData, Entity, EntityBuilder, EntityData, EntityIter, EntityManager, EntityModifier,
+    ModifyData,
+};
+use crate::services::ServiceManager;
+use crate::system::SystemManager;
 
 pub struct World<S>
 where
@@ -146,7 +148,8 @@ where
         self.flush_queue();
 
         for entity in self.data.entities.iter() {
-            self.systems.deactivated(entity, &self.data.components, &mut self.data.services);
+            self.systems
+                .deactivated(entity, &self.data.components, &mut self.data.services);
         }
 
         self.data.entities.clear();

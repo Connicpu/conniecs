@@ -1,14 +1,14 @@
-use index_pool::iter::IndexIter;
-use free_ranges::Range;
 use fnv::FnvHashMap;
+use free_ranges::Range;
+use index_pool::iter::IndexIter;
 use vec_map::VecMap;
 
-use std::collections::hash_map::Values;
 use std::collections::btree_set::Iter as BIter;
+use std::collections::hash_map::Values;
 
-use aspect::Aspect;
-use component::ComponentManager;
-use entity::{Entity, EntityData, IndexedEntity};
+use crate::aspect::Aspect;
+use crate::component::ComponentManager;
+use crate::entity::{Entity, EntityData, IndexedEntity};
 
 pub struct FilteredEntityIter<'a, C>
 where
@@ -105,7 +105,8 @@ where
     fn next(&mut self) -> Option<EntityData<'a, C>> {
         match *self {
             EntityIter::Map(ref mut values) => values.next().map(|x| EntityData(x)),
-            EntityIter::Indexed(ref mut iter) => iter.iter
+            EntityIter::Indexed(ref mut iter) => iter
+                .iter
                 .next()
                 .map(|i| iter.values.get(i).unwrap())
                 .map(|x| EntityData(x)),

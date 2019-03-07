@@ -1,7 +1,4 @@
-#[macro_use]
-extern crate conniecs_derive;
-extern crate conniecs;
-
+use conniecs::{Aspect, ComponentManager, ServiceManager, SystemManager, System};
 use conniecs::ComponentList;
 use conniecs::system::EntitySystem;
 use conniecs::system::InteractSystem;

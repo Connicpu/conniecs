@@ -1,14 +1,14 @@
 //! TODO: Add documentation including describing how the derive macros work
 
-use vec_map::VecMap;
 use fnv::FnvHashMap;
+use vec_map::VecMap;
 
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
 use self::InnerComponentList::{Cold, Hot};
-use entity::{BuildData, EditData, IndexedEntity, ModifyData};
+use crate::entity::{BuildData, EditData, IndexedEntity, ModifyData};
 
 /// Marks types which are suitable for being components. It is implemented for all
 /// types which are `'static`.
@@ -168,15 +168,13 @@ where
     }
 
     pub(crate) fn index(&self, index: usize) -> &T {
-        self.get(index).unwrap_or_else(|| {
-            panic!("Entity at index {} does not have this component attached")
-        })
+        self.get(index)
+            .unwrap_or_else(|| panic!("Entity at index {} does not have this component attached"))
     }
 
     pub(crate) fn index_mut(&mut self, index: usize) -> &mut T {
-        self.get_mut(index).unwrap_or_else(|| {
-            panic!("Entity at index {} does not have this component attached")
-        })
+        self.get_mut(index)
+            .unwrap_or_else(|| panic!("Entity at index {} does not have this component attached"))
     }
 
     pub(crate) fn get(&self, index: usize) -> Option<&T> {

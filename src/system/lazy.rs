@@ -2,9 +2,9 @@
 
 use std::ops::{Deref, DerefMut};
 
-use entity::EntityData;
-use system::{Process, System};
-use world::DataHelper;
+use crate::entity::EntityData;
+use crate::system::{Process, System};
+use crate::world::DataHelper;
 
 pub struct LazySystem<T>
 where

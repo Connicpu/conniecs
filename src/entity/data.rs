@@ -1,8 +1,8 @@
-use std::ops::Deref;
 use std::fmt;
+use std::ops::Deref;
 
-use component::ComponentManager;
-use entity::IndexedEntity;
+use crate::component::ComponentManager;
+use crate::entity::IndexedEntity;
 
 pub struct BuildData<'a, C: ComponentManager>(pub(crate) &'a IndexedEntity<C>);
 pub struct ModifyData<'a, C: ComponentManager>(pub(crate) &'a IndexedEntity<C>);
@@ -106,9 +106,7 @@ where
     C: ComponentManager,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_tuple("EntityData")
-            .field(&self.0)
-            .finish()
+        fmt.debug_tuple("EntityData").field(&self.0).finish()
     }
 }
 
@@ -117,9 +115,7 @@ where
     C: ComponentManager,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_tuple("BuildData")
-            .field(&self.0)
-            .finish()
+        fmt.debug_tuple("BuildData").field(&self.0).finish()
     }
 }
 
@@ -128,8 +124,6 @@ where
     C: ComponentManager,
 {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.debug_tuple("ModifyData")
-            .field(&self.0)
-            .finish()
+        fmt.debug_tuple("ModifyData").field(&self.0).finish()
     }
 }

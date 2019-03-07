@@ -4,9 +4,9 @@ use time;
 
 use std::ops::{Deref, DerefMut};
 
-use entity::EntityData;
-use system::{Process, System};
-use world::DataHelper;
+use crate::entity::EntityData;
+use crate::system::{Process, System};
+use crate::world::DataHelper;
 
 pub trait SystemInterval: System {
     fn create_interval() -> TickerState;
@@ -95,7 +95,10 @@ where
 
 #[derive(Copy, Clone, Debug)]
 pub enum TickerState {
-    Frames { interval: u64, ticks: u64 },
+    Frames {
+        interval: u64,
+        ticks: u64,
+    },
     Timed {
         interval: u64,
         next_tick: Option<u64>,

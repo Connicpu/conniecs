@@ -1,15 +1,15 @@
 //! TODO: Add documentation including describing how the derive macros work
 
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
-use std::fmt;
 
-use component::ComponentManager;
+use crate::component::ComponentManager;
 
-pub use entity::builder::*;
-pub use entity::data::*;
-pub use entity::iter::*;
-pub use entity::manager::*;
+pub use crate::entity::builder::*;
+pub use crate::entity::data::*;
+pub use crate::entity::iter::*;
+pub use crate::entity::manager::*;
 
 pub mod builder;
 pub mod data;
@@ -33,7 +33,10 @@ where
     _marker: PhantomData<C>,
 }
 
-impl<C> fmt::Debug for IndexedEntity<C> where C: ComponentManager {
+impl<C> fmt::Debug for IndexedEntity<C>
+where
+    C: ComponentManager,
+{
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_struct("IndexedEntity")
             .field("index", &self.index)

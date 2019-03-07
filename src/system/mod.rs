@@ -1,14 +1,14 @@
 //! TODO: Add documentation including describing how the derive macros work
 
-use entity::EntityData;
-use component::ComponentManager;
-use services::ServiceManager;
-use world::DataHelper;
+use crate::component::ComponentManager;
+use crate::entity::EntityData;
+use crate::services::ServiceManager;
+use crate::world::DataHelper;
 
-pub use system::entity::{EntityProcess, EntitySystem};
-pub use system::interact::{InteractProcess, InteractSystem};
-pub use system::interval::IntervalSystem;
-pub use system::lazy::LazySystem;
+pub use crate::system::entity::{EntityProcess, EntitySystem};
+pub use crate::system::interact::{InteractProcess, InteractSystem};
+pub use crate::system::interval::IntervalSystem;
+pub use crate::system::lazy::LazySystem;
 
 pub mod entity;
 pub mod interact;

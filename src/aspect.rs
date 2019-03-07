@@ -1,7 +1,7 @@
 //! TODO: Add documentation including describing how the derive macros work
 
-use component::ComponentManager;
-use entity::EntityData;
+use crate::component::ComponentManager;
+use crate::entity::EntityData;
 
 pub struct Aspect<C: ComponentManager>(Box<AspectFilter<C> + 'static>);
 
